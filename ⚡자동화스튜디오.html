@@ -126,6 +126,30 @@
         .warning { color: #dc3545; font-size: 12px; margin-top: 5px; display: block; }
         .path-note { font-size: 12px; color: #6b7280; margin-top: 6px; }
         .mini-note { font-size: 12px; color: #6b7280; }
+        .helper-box {
+            background: #f8fafc;
+            border: 1px solid #dde6f2;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        .helper-box-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        .helper-box-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .helper-box-row input[type="text"] {
+            flex: 1;
+            min-width: 260px;
+            background: #fff;
+            font-family: 'Consolas', monospace;
+        }
 
         /* 4. 발표 시간 계산기 */
         .speech-grid {
@@ -265,6 +289,15 @@
         <div class="input-group">
             <label>1. 번호 범위 입력 (예: S001-S007, 101-103) <span style="color: #007bff; font-weight: normal; font-size: 12px;">※ 1번 탭에서 복사한 누락 번호를 여기에 붙여넣기 하세요!</span></label>
             <textarea id="rangeInput" rows="3">S001-S007,S018-S053,S058,S077,S100,S101-103,105-120,123,128</textarea>
+            <div class="helper-box">
+                <div class="helper-box-title">📂 파일 열기용 복사</div>
+                <div class="mini-note" style="margin-bottom: 8px;">윈도우 파일 열기창 `파일 이름` 칸에 바로 붙여넣을 수 있게 `"S035""S039""S053"` 형식으로 만들어줍니다.</div>
+                <div class="helper-box-row">
+                    <button class="btn btn-primary" type="button" onclick="buildOpenFileCopyValue()">✨ 열기용 형식 만들기</button>
+                    <input type="text" id="openFileCopyOutput" readonly placeholder="여기에 파일 열기용 복붙 결과가 표시됩니다.">
+                    <button class="btn btn-success" type="button" onclick="copyOpenFileValue()">📋 복사</button>
+                </div>
+            </div>
         </div>
         <div class="input-group">
             <label>2. 기본 프롬프트 입력 <span style="color: red; font-weight: normal; font-size: 12px;">(💾 자동 저장됨 - 껐다 켜도 유지됩니다)</span></label>
@@ -614,12 +647,9 @@
         // ==========================================
         // 2. 프롬프트 로직
         // ==========================================
-        function generatePrompts() {
-            const rangeStr = document.getElementById('rangeInput').value;
-            const defaultPrompt = document.getElementById('defaultPromptInput').value.trim();
-            const overridesStr = document.getElementById('overridesInput').value;
+        function parsePromptRangeNumbers(rangeStr) {
             let numbersToProcess = new Set();
-            const parts = rangeStr.split(',');
+            const parts = (rangeStr || '').split(',');
             for (let part of parts) {
                 let cleanPart = part.replace(/[^0-9-]/g, '');
                 if (!cleanPart) continue;
@@ -627,12 +657,50 @@
                     const bounds = cleanPart.split('-');
                     const start = parseInt(bounds[0], 10);
                     const end = parseInt(bounds[1], 10);
-                    if (!isNaN(start) && !isNaN(end)) for (let i = start; i <= end; i++) numbersToProcess.add(i);
+                    if (!isNaN(start) && !isNaN(end)) {
+                        const stepStart = Math.min(start, end);
+                        const stepEnd = Math.max(start, end);
+                        for (let i = stepStart; i <= stepEnd; i++) numbersToProcess.add(i);
+                    }
                 } else {
                     const num = parseInt(cleanPart, 10);
                     if (!isNaN(num)) numbersToProcess.add(num);
                 }
             }
+            return Array.from(numbersToProcess).sort((a, b) => a - b);
+        }
+
+        function buildOpenFileCopyValue() {
+            const sortedNums = parsePromptRangeNumbers(document.getElementById('rangeInput').value);
+            const outputEl = document.getElementById('openFileCopyOutput');
+            if (!sortedNums.length) {
+                outputEl.value = '';
+                alert("번호 범위 입력에 먼저 번호를 넣어주세요!");
+                return;
+            }
+            outputEl.value = sortedNums
+                .map(num => `"S${String(num).padStart(3, '0')}"`)
+                .join('');
+        }
+
+        function copyOpenFileValue() {
+            const outputEl = document.getElementById('openFileCopyOutput');
+            if (!outputEl.value.trim()) {
+                buildOpenFileCopyValue();
+            }
+            if (!outputEl.value.trim()) {
+                return;
+            }
+            outputEl.select();
+            document.execCommand("copy");
+            alert("파일 열기용 복붙 형식이 복사되었습니다!");
+        }
+
+        function generatePrompts() {
+            const rangeStr = document.getElementById('rangeInput').value;
+            const defaultPrompt = document.getElementById('defaultPromptInput').value.trim();
+            const overridesStr = document.getElementById('overridesInput').value;
+            const sortedNums = parsePromptRangeNumbers(rangeStr);
             let overrides = {};
             const lines = overridesStr.split('\n');
             for (let line of lines) {
@@ -644,7 +712,6 @@
                     if (!isNaN(num)) { overrides[num] = promptText; }
                 }
             }
-            let sortedNums = Array.from(numbersToProcess).sort((a, b) => a - b);
             let resultLines = [];
             for (let num of sortedNums) {
                 const sCode = "S" + String(num).padStart(3, '0');
