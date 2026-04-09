@@ -723,8 +723,7 @@
                 .map(block => block.trim())
                 .filter(Boolean);
 
-            const result = [];
-            let index = 1;
+            const entries = [];
 
             for (const block of blocks) {
                 const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
@@ -745,6 +744,7 @@
                 if (!/^\d{2}:\d{2}:\d{2},\d{2,3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{2,3}$/.test(timeLine)) {
                     continue;
                 }
+                const [startTime, endTime] = timeLine.split(/\s*-->\s*/);
 
                 const subtitleText = textLines
                     .map(line => line.replace(/\s*\[Speaker[^\]]*\]\s*/gi, '').trim())
@@ -753,14 +753,57 @@
 
                 if (!subtitleText) continue;
 
+                entries.push({
+                    startTime,
+                    endTime,
+                    text: subtitleText
+                });
+            }
+
+            const mergedEntries = mergeShortSubtitleEntries(entries);
+            const result = [];
+            let index = 1;
+            for (const entry of mergedEntries) {
                 result.push(`${index}`);
-                result.push(timeLine);
-                result.push(subtitleText);
+                result.push(`${entry.startTime} --> ${entry.endTime}`);
+                result.push(entry.text);
                 result.push('');
                 index++;
             }
-
             return result.join('\n').trim();
+        }
+
+        function mergeShortSubtitleEntries(entries) {
+            const MIN_LEN = 20;
+            const MAX_LEN = 30;
+            const merged = [];
+
+            for (let i = 0; i < entries.length; i++) {
+                let current = { ...entries[i] };
+
+                while (i + 1 < entries.length) {
+                    const next = entries[i + 1];
+                    const currentLen = current.text.replace(/\s/g, '').length;
+                    const nextLen = next.text.replace(/\s/g, '').length;
+                    const combinedText = `${current.text} ${next.text}`.replace(/\s+/g, ' ').trim();
+                    const combinedLen = combinedText.replace(/\s/g, '').length;
+
+                    const shouldMerge =
+                        currentLen < MIN_LEN ||
+                        (currentLen < MAX_LEN && nextLen < MIN_LEN) ||
+                        combinedLen <= MAX_LEN;
+
+                    if (!shouldMerge) break;
+
+                    current.text = combinedText;
+                    current.endTime = next.endTime;
+                    i++;
+                }
+
+                merged.push(current);
+            }
+
+            return merged;
         }
 
         function copyBuiltSrt() {
