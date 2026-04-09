@@ -306,11 +306,12 @@
                 <button class="btn btn-primary" onclick="buildSrtBlocks()">🛠️ SRT 형식으로 정리하기</button>
                 <button class="btn btn-success" onclick="copyBuiltSrt()">📋 정리 결과 복사하기</button>
                 <button class="btn btn-warning" onclick="downloadBuiltSrt()">💾 .srt로 바로 저장하기</button>
+                <button class="btn btn-danger" onclick="processBuiltSrtDirectly()">⚡ 방금 만든 SRT로 바로 자막 분할</button>
             </div>
             <textarea id="builtSrtOutput" rows="10" readonly placeholder="여기에 번호가 붙은 SRT 형식 결과가 나옵니다."></textarea>
         </div>
 
-        <input type="file" id="srtFileInput" accept=".srt">
+        <input type="file" id="srtFileInput" accept=".srt,.txt,text/plain">
         <button class="btn btn-primary" onclick="processSRT()">⚙️ 자막 분할 실행하기</button>
         <button class="btn btn-success" onclick="copySubtitleResult()">📋 결과 복사하기</button>
         <div class="stats" id="statsBox" style="margin-top:15px;">대기 중...</div>
@@ -697,10 +698,13 @@
             if (!fileInput.files.length) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                const subs = parseSRT(e.target.result);
-                generateScenes(subs);
+                processSrtTextToScenes(e.target.result);
             };
             reader.readAsText(fileInput.files[0], 'UTF-8');
+        }
+        function processSrtTextToScenes(rawText) {
+            const subs = parseSRT(rawText);
+            generateScenes(subs);
         }
         function generateScenes(subs) {
             let scenes = []; let currentSceneSubs = []; let currentStartTime = 0;
@@ -725,6 +729,7 @@
                 outputLines.push(`[${sCode}] ${scene.text} (약 ${scene.duration.toFixed(1)}초)`);
             });
             document.getElementById('subtitleOutput').value = outputLines.join('\n\n');
+            document.getElementById('statsBox').textContent = `총 자막 ${subs.length}개 → 장면 ${scenes.length}개로 분할 완료`;
         }
         function copySubtitleResult() {
             const output = document.getElementById('subtitleOutput');
@@ -875,6 +880,29 @@
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
             alert(`'${saveName}' 파일로 저장했습니다!`);
+        }
+
+        async function processBuiltSrtDirectly() {
+            const fileInput = document.getElementById('rawSubtitleFileInput');
+            const output = document.getElementById('builtSrtOutput');
+
+            if (!fileInput.files.length) {
+                alert("먼저 텍스트 파일이나 SRT 파일을 선택해주세요!");
+                return;
+            }
+
+            if (!output.value.trim()) {
+                const rawText = await fileInput.files[0].text();
+                output.value = normalizeTranscriptToSrt(rawText);
+            }
+
+            if (!output.value.trim()) {
+                alert("먼저 정리된 SRT 결과를 만들어주세요!");
+                return;
+            }
+
+            processSrtTextToScenes(output.value);
+            alert("방금 만든 SRT로 바로 자막 분할까지 완료했습니다!");
         }
 
         // ==========================================
