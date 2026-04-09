@@ -291,7 +291,7 @@
             <textarea id="rangeInput" rows="3">S001-S007,S018-S053,S058,S077,S100,S101-103,105-120,123,128</textarea>
             <div class="helper-box">
                 <div class="helper-box-title">📂 파일 열기용 복사</div>
-                <div class="mini-note" style="margin-bottom: 8px;">윈도우 파일 열기창 `파일 이름` 칸에 바로 붙여넣을 수 있게 `"S035""S039""S053"` 형식으로 만들어줍니다.</div>
+                <div class="mini-note" style="margin-bottom: 8px;">윈도우 파일 열기창 `파일 이름` 칸에 바로 붙여넣을 수 있게 `"S035" "S039" "S053"` 형식으로 만들어줍니다.</div>
                 <div class="helper-box-row">
                     <button class="btn btn-primary" type="button" onclick="buildOpenFileCopyValue()">✨ 열기용 형식 만들기</button>
                     <input type="text" id="openFileCopyOutput" readonly placeholder="여기에 파일 열기용 복붙 결과가 표시됩니다.">
@@ -680,7 +680,7 @@
             }
             outputEl.value = sortedNums
                 .map(num => `"S${String(num).padStart(3, '0')}"`)
-                .join('');
+                .join(' ');
         }
 
         function copyOpenFileValue() {
