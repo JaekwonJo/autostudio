@@ -311,7 +311,7 @@
             <textarea id="builtSrtOutput" rows="10" readonly placeholder="여기에 번호가 붙은 SRT 형식 결과가 나옵니다."></textarea>
         </div>
 
-        <input type="file" id="srtFileInput" accept=".srt,.txt,text/plain">
+        <input type="file" id="srtFileInput" accept=".srt,.txt,text/plain" multiple>
         <button class="btn btn-primary" onclick="processSRT()">⚙️ 자막 분할 실행하기</button>
         <button class="btn btn-success" onclick="copySubtitleResult()">📋 결과 복사하기</button>
         <div class="stats" id="statsBox" style="margin-top:15px;">대기 중...</div>
@@ -693,20 +693,34 @@
             });
             return parsedBlocks;
         }
-        function processSRT() {
+        async function processSRT() {
             const fileInput = document.getElementById('srtFileInput');
             if (!fileInput.files.length) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                processSrtTextToScenes(e.target.result);
-            };
-            reader.readAsText(fileInput.files[0], 'UTF-8');
+            let globalSceneIndex = 1;
+            let totalSubtitleCount = 0;
+            let totalSceneCount = 0;
+            let outputLines = [];
+
+            for (const file of [...fileInput.files]) {
+                const rawText = await file.text();
+                const result = processSrtTextToScenes(rawText, globalSceneIndex);
+                if (result.outputText) {
+                    if (outputLines.length) outputLines.push('');
+                    outputLines.push(result.outputText);
+                }
+                globalSceneIndex += result.sceneCount;
+                totalSubtitleCount += result.subtitleCount;
+                totalSceneCount += result.sceneCount;
+            }
+
+            document.getElementById('subtitleOutput').value = outputLines.join('\n');
+            document.getElementById('statsBox').textContent = `총 파일 ${fileInput.files.length}개 | 총 자막 ${totalSubtitleCount}개 → 장면 ${totalSceneCount}개로 분할 완료`;
         }
-        function processSrtTextToScenes(rawText) {
+        function processSrtTextToScenes(rawText, startSceneIndex = 1) {
             const subs = parseSRT(rawText);
-            generateScenes(subs);
+            return generateScenes(subs, startSceneIndex);
         }
-        function generateScenes(subs) {
+        function generateScenes(subs, startSceneIndex = 1) {
             let scenes = []; let currentSceneSubs = []; let currentStartTime = 0;
             for (let i = 0; i < subs.length; i++) {
                 let sub = subs[i];
@@ -725,11 +739,14 @@
             }
             let outputLines = [];
             scenes.forEach((scene, index) => {
-                let sCode = "S" + String(index + 1).padStart(3, '0');
+                let sCode = "S" + String(startSceneIndex + index).padStart(3, '0');
                 outputLines.push(`[${sCode}] ${scene.text} (약 ${scene.duration.toFixed(1)}초)`);
             });
-            document.getElementById('subtitleOutput').value = outputLines.join('\n\n');
-            document.getElementById('statsBox').textContent = `총 자막 ${subs.length}개 → 장면 ${scenes.length}개로 분할 완료`;
+            return {
+                outputText: outputLines.join('\n\n'),
+                subtitleCount: subs.length,
+                sceneCount: scenes.length
+            };
         }
         function copySubtitleResult() {
             const output = document.getElementById('subtitleOutput');
@@ -901,7 +918,9 @@
                 return;
             }
 
-            processSrtTextToScenes(output.value);
+            const result = processSrtTextToScenes(output.value, 1);
+            document.getElementById('subtitleOutput').value = result.outputText;
+            document.getElementById('statsBox').textContent = `총 자막 ${result.subtitleCount}개 → 장면 ${result.sceneCount}개로 분할 완료`;
             alert("방금 만든 SRT로 바로 자막 분할까지 완료했습니다!");
         }
 
