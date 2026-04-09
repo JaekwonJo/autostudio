@@ -678,7 +678,10 @@
                 alert("번호 범위 입력에 먼저 번호를 넣어주세요!");
                 return;
             }
-            outputEl.value = sortedNums
+            const windowsDialogOrder = sortedNums.length > 1
+                ? [sortedNums[sortedNums.length - 1], ...sortedNums.slice(0, -1)]
+                : sortedNums;
+            outputEl.value = windowsDialogOrder
                 .map(num => `"S${String(num).padStart(3, '0')}"`)
                 .join(' ');
         }
