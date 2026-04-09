@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ 자동화 스튜디오 (Renamer / Prompt / Scene 8)</title>
+    <style>
+        body { 
+            font-family: 'Malgun Gothic', sans-serif; 
+            padding: 20px; 
+            max-width: 1000px; 
+            margin: auto; 
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        h2 { color: #2c3e50; margin-top: 0; }
+        
+        /* 탭 스타일 */
+        .tabs { display: flex; margin-bottom: 20px; }
+        .tab-btn {
+            flex: 1; padding: 15px; text-align: center; cursor: pointer;
+            background: #e9ecef; border: none; font-weight: bold; font-size: 15px;
+            transition: 0.3s; border-radius: 10px 10px 0 0; color: #555;
+            border-right: 1px solid #ddd;
+        }
+        .tab-btn:last-child { border-right: none; }
+        .tab-btn.active { background: #007bff; color: white; }
+        .tab-btn:hover:not(.active) { background: #dde2e6; }
+        
+        .card {
+            background: white; padding: 25px; border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;
+            display: none; 
+        }
+        .card.active { display: block; }
+
+        /* 공통 버튼 & 폼 스타일 */
+        .btn { 
+            padding: 12px 18px; margin: 5px 5px 5px 0; cursor: pointer; 
+            border: none; border-radius: 5px; font-weight: bold; font-size: 14px; transition: 0.2s;
+        }
+        .btn:disabled { background: #cccccc !important; color: #666 !important; cursor: not-allowed; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-danger { background: #17a2b8; color: white; }
+        .btn-danger:hover { background: #117a8b; }
+        
+        /* 1. 파일명 변경기 전용 */
+        .log-box { border: 1px solid #ddd; height: 350px; overflow-y: auto; background: #fff; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
+        th { background-color: #f8f9fa; position: sticky; top: 0; }
+        .status-ok { color: #28a745; font-weight: bold; }
+        .status-err { color: #dc3545; font-weight: bold; }
+        .status-undo { color: #ff8c00; font-weight: bold; }
+
+        .missing-box { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 5px solid #ffc107; }
+        .folder-info-box {
+            background: #eef4ff;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin: 10px 0 15px;
+            border-left: 5px solid #007bff;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        .folder-info-box strong {
+            display: inline-block;
+            min-width: 85px;
+        }
+        .folder-info-box .folder-path {
+            word-break: break-all;
+        }
+        .folder-info-box .folder-subinfo {
+            margin-top: 6px;
+            color: #4f5f75;
+            line-height: 1.5;
+        }
+
+        /* 2, 3. 프롬프트 및 자막 분할기 전용 */
+        .input-group { margin-bottom: 15px; }
+        .input-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .input-group-header label {
+            margin-bottom: 0 !important;
+            flex: 1;
+        }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #444; }
+        textarea, input[type="text"] {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;
+            font-family: 'Malgun Gothic', sans-serif; font-size: 14px; box-sizing: border-box;
+        }
+        textarea { resize: vertical; }
+        #promptOutput { background-color: #272822; color: #f8f8f2; font-family: 'Consolas', monospace; }
+        
+        input[type="file"] {
+            display: block; margin-bottom: 15px; padding: 10px; border: 1px dashed #ccc; width: 100%; box-sizing: border-box; background: #fafafa;
+        }
+        .stats { background: #e9ecef; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 14px; font-weight: bold; color: #444; }
+        .warning { color: #dc3545; font-size: 12px; margin-top: 5px; display: block; }
+        .path-note { font-size: 12px; color: #6b7280; margin-top: 6px; }
+        .mini-note { font-size: 12px; color: #6b7280; }
+
+        /* 4. 발표 시간 계산기 */
+        .speech-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+            align-items: stretch;
+        }
+        .speech-panel {
+            background: #f8fafc;
+            border: 1px solid #dde6f2;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .speech-slider-box {
+            background: white;
+            border: 1px solid #dde6f2;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 12px;
+        }
+        .speech-speed-head {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #666;
+            margin-top: 8px;
+        }
+        .speech-range {
+            width: 100%;
+            margin-top: 10px;
+        }
+        .speech-output-wrap {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+            align-items: stretch;
+        }
+        .speech-result-box {
+            flex: 1;
+            background: #eef4ff;
+            border: 1px solid #cfe0ff;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            color: #2c3e50;
+        }
+        .speech-meta {
+            display: flex;
+            justify-content: flex-end;
+            gap: 18px;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+        .speech-copy-box {
+            margin-top: 12px;
+            background: #f8fafc;
+            border: 1px solid #dde6f2;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .speech-copy-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .speech-copy-output {
+            width: 100%;
+            min-height: 92px;
+            background: #fff;
+        }
+        @media (max-width: 860px) {
+            .speech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('renameTab', this)">📂 1. 파일 관리 (이름변경/누락확인)</button>
+        <button class="tab-btn" onclick="switchTab('promptTab', this)">📝 2. 프롬프트 자동 생성기</button>
+        <button class="tab-btn" onclick="switchTab('subtitleTab', this)">🎬 3. Scene 8 (자막 분할)</button>
+        <button class="tab-btn" onclick="switchTab('speechTab', this)">⏱️ 4. 발표 시간 계산기</button>
+    </div>
+
+    <div id="renameTab" class="card active">
+        <h2>🚀 파일명 일괄 변경 & 누락 확인</h2>
+        <p>폴더를 선택하면 `##_S###` 또는 `##_###` 형식의 파일명을 `S###.확장자`로 통일하고, 빈 번호를 찾을 수 있습니다.</p>
+        
+        <button class="btn btn-primary" onclick="selectFolder()">📂 1. 폴더 선택하기</button>
+        <button class="btn btn-success" id="renameBtn" onclick="executeRename()" disabled>⚡ 2. 이름 일괄 변경 실행</button>
+        <button class="btn btn-warning" id="undoBtn" onclick="undoRename()" disabled>↩️ 방금 작업 되돌리기</button>
+        <button class="btn btn-danger" id="logBtn" onclick="downloadLog()" disabled>💾 백업 로그 다운로드</button>
+
+        <div class="folder-info-box">
+            <div><strong>선택 폴더</strong><span id="selectedFolderName" class="folder-path">아직 선택 안 됨</span></div>
+            <div style="margin-top: 6px;"><strong>파일 개수</strong><span id="selectedFolderCount">0개</span></div>
+            <div class="folder-subinfo"><strong>확장자</strong><span id="selectedFolderTypes">아직 정보 없음</span></div>
+            <div class="folder-subinfo"><strong>파일 예시</strong><span id="selectedFolderSamples">아직 정보 없음</span></div>
+        </div>
+
+        <div class="missing-box">
+            <h4 style="margin-top: 0; margin-bottom: 10px; color: #2c3e50;">🔍 누락된 파일(빈 번호) 찾기</h4>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="missingRangeInput" placeholder="예: 1-135" style="width: 200px;">
+                <button class="btn btn-primary" style="margin: 0;" onclick="findMissingNumbers()">찾기</button>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+                <input type="text" id="missingOutput" readonly placeholder="누락된 번호가 여기에 표시됩니다. (예: S004,S009)" style="flex: 1; background: #fff;">
+                <button class="btn btn-success" style="margin: 0;" onclick="copyMissing()">📋 복사</button>
+            </div>
+        </div>
+
+        <h3 style="margin-top: 30px;">📋 작업 내역 및 미리보기</h3>
+        <div class="log-box">
+            <table id="previewTable">
+                <thead>
+                    <tr><th width="50%">기존 파일명</th><th width="30%">변경될 파일명</th><th width="20%">상태</th></tr>
+                </thead>
+                <tbody id="previewBody">
+                    <tr><td colspan="3" style="text-align: center; padding: 30px; color: #777;">폴더를 선택해주세요.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="promptTab" class="card">
+        <h2>📝 프롬프트 자동 생성기</h2>
+        <p>번호 범위와 예외 프롬프트를 입력하면, 순서대로 정렬된 결과물을 생성합니다.</p>
+        <div class="input-group">
+            <label>1. 번호 범위 입력 (예: S001-S007, 101-103) <span style="color: #007bff; font-weight: normal; font-size: 12px;">※ 1번 탭에서 복사한 누락 번호를 여기에 붙여넣기 하세요!</span></label>
+            <textarea id="rangeInput" rows="3">S001-S007,S018-S053,S058,S077,S100,S101-103,105-120,123,128</textarea>
+        </div>
+        <div class="input-group">
+            <label>2. 기본 프롬프트 입력 <span style="color: red; font-weight: normal; font-size: 12px;">(💾 자동 저장됨 - 껐다 켜도 유지됩니다)</span></label>
+            <textarea id="defaultPromptInput" rows="3">3d animated pixar studio style, Seamless Loop animation...</textarea>
+        </div>
+        <div class="input-group">
+            <div class="input-group-header">
+                <label>3. 예외 조건 입력 (번호 ||| 내용)</label>
+                <label class="btn btn-primary" style="margin: 0;">
+                    📄 파일 선택
+                    <input type="file" id="overridesFileInput" accept=".txt,text/plain" hidden>
+                </label>
+            </div>
+            <textarea id="overridesInput" rows="5">004 ||| 3d animated pixar studio style...</textarea>
+        </div>
+        <button class="btn btn-success" onclick="generatePrompts()">✨ 프롬프트 일괄 생성하기</button>
+        <button class="btn btn-primary" onclick="copyPrompts()">📋 결과 복사하기</button>
+        <textarea id="promptOutput" rows="10" readonly style="margin-top:15px;"></textarea>
+    </div>
+
+    <div id="subtitleTab" class="card">
+        <h2>🎬 Scene 8 (자막 씬 자동 분할기)</h2>
+        <input type="file" id="srtFileInput" accept=".srt">
+        <button class="btn btn-primary" onclick="processSRT()">⚙️ 자막 분할 실행하기</button>
+        <button class="btn btn-success" onclick="copySubtitleResult()">📋 결과 복사하기</button>
+        <div class="stats" id="statsBox" style="margin-top:15px;">대기 중...</div>
+        <textarea id="subtitleOutput" rows="15" readonly></textarea>
+    </div>
+
+    <div id="speechTab" class="card">
+        <h2>⏱️ 발표 시간 계산기</h2>
+        <p>대본을 붙여넣고 말하기 속도를 조절하면, 예상 발표 시간을 바로 계산합니다.</p>
+
+        <div class="speech-grid">
+            <div class="speech-panel">
+                <ul style="margin: 0 0 12px 0; padding-left: 18px; color: #444; line-height: 1.7;">
+                    <li>말하기 속도를 지정해 주세요. 해당 속도에 맞춰 예상 발표 시간을 계산합니다.</li>
+                    <li>천천히 읽는 발표는 80~90%, 보통은 100%, 빠르게 말하면 110~130% 정도가 잘 맞습니다.</li>
+                </ul>
+
+                <div class="speech-slider-box">
+                    <label style="display:block; font-weight:bold; margin-bottom:6px;">말하기 속도</label>
+                    <div class="speech-speed-head">
+                        <span>Slow (60%)</span>
+                        <strong id="speechSpeedValue">100%</strong>
+                        <span>Fast (140%)</span>
+                    </div>
+                    <input id="speechSpeedInput" class="speech-range" type="range" min="60" max="140" step="5" value="100">
+                </div>
+            </div>
+
+            <div class="speech-panel">
+                <label style="display:block; font-weight:bold; margin-bottom:8px;">대본 입력</label>
+                <textarea id="speechScriptInput" rows="14" placeholder="스크립트를 입력하면 글자 수, 단어 수, 예상 발표 시간을 계산합니다."></textarea>
+                <div class="speech-meta">
+                    <span id="speechCharsInfo">공백 포함: 0자</span>
+                    <span id="speechCharsNoSpaceInfo">공백 제외: 0자</span>
+                    <span id="speechWordInfo">단어 수: 0개</span>
+                </div>
+                <div class="speech-output-wrap">
+                    <div id="speechResult" class="speech-result-box">0초</div>
+                </div>
+                <div class="path-note" id="speechDetailInfo" style="margin-top:10px;">예상 읽기 기준: 분당 300자</div>
+                <div class="speech-copy-box">
+                    <div class="speech-copy-actions">
+                        <strong>복붙용 정보</strong>
+                        <button class="btn btn-primary" style="margin:0;" onclick="copySpeechSummary()">📋 복사</button>
+                    </div>
+                    <textarea id="speechSummaryOutput" class="speech-copy-output" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 초기화 및 로컬 스토리지 (자동 저장) 로직
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            const defaultPromptEl = document.getElementById('defaultPromptInput');
+            const speechScriptEl = document.getElementById('speechScriptInput');
+            const speechSpeedEl = document.getElementById('speechSpeedInput');
+            const overridesFileEl = document.getElementById('overridesFileInput');
+            
+            // 1. 저장된 프롬프트가 있으면 불러오기
+            const savedPrompt = localStorage.getItem('savedDefaultPrompt');
+            if (savedPrompt) {
+                defaultPromptEl.value = savedPrompt;
+            }
+            const savedSpeechScript = localStorage.getItem('savedSpeechScript');
+            if (savedSpeechScript) {
+                speechScriptEl.value = savedSpeechScript;
+            }
+            const savedSpeechSpeed = localStorage.getItem('savedSpeechSpeed');
+            if (savedSpeechSpeed) {
+                speechSpeedEl.value = savedSpeechSpeed;
+            }
+
+            // 2. 글자가 바뀔 때마다 실시간으로 브라우저에 저장하기
+            defaultPromptEl.addEventListener('input', () => {
+                localStorage.setItem('savedDefaultPrompt', defaultPromptEl.value);
+            });
+            speechScriptEl.addEventListener('input', () => {
+                localStorage.setItem('savedSpeechScript', speechScriptEl.value);
+                calculateSpeechTime();
+            });
+            speechSpeedEl.addEventListener('input', () => {
+                localStorage.setItem('savedSpeechSpeed', speechSpeedEl.value);
+                calculateSpeechTime();
+            });
+            overridesFileEl.addEventListener('change', handleOverridesFileUpload);
+            calculateSpeechTime();
+        });
+
+        // 탭 전환
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // ==========================================
+        // 1. 파일명 일괄 변경 및 누락 파일 찾기 로직
+        // ==========================================
+        let directoryHandle;
+        let fileTasks = []; 
+        let historyLog = []; 
+
+        async function selectFolder() {
+            try {
+                directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                document.getElementById('selectedFolderName').textContent = directoryHandle.name || '이름 없음';
+                await loadFiles();
+            } catch (error) { console.warn("취소됨", error); }
+        }
+
+        async function loadFiles() {
+            fileTasks = [];
+            const tbody = document.getElementById('previewBody');
+            tbody.innerHTML = '';
+            let totalFileCount = 0;
+            let sampleNames = [];
+            let extCounter = {};
+
+            for await (const entry of directoryHandle.values()) {
+                if (entry.kind === 'file') {
+                    totalFileCount++;
+                    const oldName = entry.name;
+                    if (sampleNames.length < 5) sampleNames.push(oldName);
+                    const ext = oldName.includes('.') ? oldName.substring(oldName.lastIndexOf('.')).toLowerCase() : '(확장자 없음)';
+                    extCounter[ext] = (extCounter[ext] || 0) + 1;
+                    const match = oldName.match(/_(S?)(\d+)/i); 
+                    
+                    if (match) {
+                        const numPart = match[2]; 
+                        const sCode = "S" + numPart.padStart(3, '0');
+                        const renameExt = oldName.substring(oldName.lastIndexOf('.'));
+                        const newName = sCode + renameExt; 
+
+                        if (oldName !== newName) {
+                            fileTasks.push({ handle: entry, oldName, newName, status: '대기중', statusClass: 'status-wait' });
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('selectedFolderCount').textContent = `${totalFileCount}개`;
+            const extSummary = Object.entries(extCounter)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6)
+                .map(([ext, count]) => `${ext} ${count}개`)
+                .join(', ');
+            document.getElementById('selectedFolderTypes').textContent = extSummary || '파일 없음';
+            document.getElementById('selectedFolderSamples').textContent = sampleNames.length ? sampleNames.join(', ') : '파일 없음';
+
+            if (fileTasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">대상 파일이 없습니다.</td></tr>';
+                document.getElementById('renameBtn').disabled = true;
+                return;
+            }
+
+            fileTasks.forEach((task, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${task.oldName}</td><td><b>${task.newName}</b></td><td id="status-${index}" class="${task.statusClass}">${task.status}</td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('renameBtn').disabled = false;
+        }
+
+        // ✨ 누락된 번호 찾기 기능
+        async function findMissingNumbers() {
+            if (!directoryHandle) {
+                alert("먼저 '1. 폴더 선택하기'를 눌러 작업할 폴더를 선택해주세요!");
+                return;
+            }
+
+            const rangeStr = document.getElementById('missingRangeInput').value.trim();
+            // 입력 양식 체크 (1-135 형식)
+            const match = rangeStr.match(/(\d+)\s*-\s*(\d+)/);
+            if (!match) {
+                alert("시작과 끝 번호를 올바르게 입력해주세요. (예: 1-135)");
+                return;
+            }
+
+            const start = parseInt(match[1], 10);
+            const end = parseInt(match[2], 10);
+            let existingNumbers = new Set();
+
+            // 폴더 내 파일 훑으면서 존재하는 번호들 Set에 저장
+            for await (const entry of directoryHandle.values()) {
+                if (entry.kind === 'file') {
+                    // S001 형태나 _001 형태 모두 숫자만 뽑아냄
+                    const nameMatch = entry.name.match(/(?:S|_S?|_)(\d{1,3})(?:\D|$)/i);
+                    const simpleMatch = entry.name.match(/S(\d{3})/i);
+                    
+                    if (simpleMatch) existingNumbers.add(parseInt(simpleMatch[1], 10));
+                    else if (nameMatch) existingNumbers.add(parseInt(nameMatch[1], 10));
+                }
+            }
+
+            let missing = [];
+            for (let i = start; i <= end; i++) {
+                if (!existingNumbers.has(i)) {
+                    missing.push("S" + String(i).padStart(3, '0'));
+                }
+            }
+
+            const outputEl = document.getElementById('missingOutput');
+            if (missing.length === 0) {
+                outputEl.value = "완벽합니다! 누락된 번호가 없습니다.";
+                alert("누락된 파일 없이 모두 존재합니다!");
+            } else {
+                outputEl.value = missing.join(',');
+                alert(`총 ${missing.length}개의 번호가 누락되었습니다.`);
+            }
+        }
+
+        function copyMissing() {
+            const outputEl = document.getElementById('missingOutput');
+            if (!outputEl.value || outputEl.value.includes("없습니다")) {
+                alert("복사할 누락 번호가 없습니다.");
+                return;
+            }
+            outputEl.select(); 
+            document.execCommand("copy"); 
+            alert("누락된 번호가 복사되었습니다! 2번 탭에 붙여넣기 하세요.");
+        }
+
+        async function executeRename() {
+            if (!confirm(`총 ${fileTasks.length}개를 변경할까요?`)) return;
+            document.getElementById('renameBtn').disabled = true;
+            document.getElementById('undoBtn').disabled = true;
+            let successCount = 0;
+            historyLog = []; 
+
+            for (let i = 0; i < fileTasks.length; i++) {
+                let task = fileTasks[i];
+                try {
+                    await task.handle.move(task.newName);
+                    task.status = '✅ 완료'; task.statusClass = 'status-ok'; successCount++;
+                    historyLog.push({ timestamp: new Date().toLocaleString(), action: "변경", oldName: task.oldName, newName: task.newName });
+                } catch (error) { task.status = '❌ 실패'; task.statusClass = 'status-err'; }
+                updateStatusUI(i, task);
+            }
+            alert(`${successCount}개 변경 완료!`);
+            document.getElementById('undoBtn').disabled = false;
+            document.getElementById('logBtn').disabled = false;
+        }
+
+        async function undoRename() {
+            if (!confirm("되돌릴까요?")) return;
+            let undoCount = 0;
+            for (let i = 0; i < fileTasks.length; i++) {
+                let task = fileTasks[i];
+                if (task.status === '✅ 완료') {
+                    try {
+                        const changedHandle = await directoryHandle.getFileHandle(task.newName);
+                        await changedHandle.move(task.oldName);
+                        task.status = '↩️ 복구됨'; task.statusClass = 'status-undo'; undoCount++;
+                        historyLog.push({ timestamp: new Date().toLocaleString(), action: "복구", oldName: task.newName, newName: task.oldName });
+                        task.handle = await directoryHandle.getFileHandle(task.oldName);
+                    } catch (error) { task.status = '⚠️ 실패'; }
+                    updateStatusUI(i, task);
+                }
+            }
+            alert(`${undoCount}개 복구됨.`);
+            document.getElementById('undoBtn').disabled = true; 
+        }
+
+        function downloadLog() {
+            if (historyLog.length === 0) return;
+            let logText = "백업 로그\n\n";
+            historyLog.forEach(log => { logText += `[${log.timestamp}] ${log.oldName} -> ${log.newName}\n`; });
+            const blob = new Blob([logText], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Log_${new Date().toISOString().slice(0, 10)}.txt`;
+            link.click();
+        }
+
+        function updateStatusUI(index, task) {
+            const td = document.getElementById(`status-${index}`);
+            if (td) { td.innerText = task.status; td.className = task.statusClass; }
+        }
+
+        // ==========================================
+        // 2. 프롬프트 로직
+        // ==========================================
+        function generatePrompts() {
+            const rangeStr = document.getElementById('rangeInput').value;
+            const defaultPrompt = document.getElementById('defaultPromptInput').value.trim();
+            const overridesStr = document.getElementById('overridesInput').value;
+            let numbersToProcess = new Set();
+            const parts = rangeStr.split(',');
+            for (let part of parts) {
+                let cleanPart = part.replace(/[^0-9-]/g, '');
+                if (!cleanPart) continue;
+                if (cleanPart.includes('-')) {
+                    const bounds = cleanPart.split('-');
+                    const start = parseInt(bounds[0], 10);
+                    const end = parseInt(bounds[1], 10);
+                    if (!isNaN(start) && !isNaN(end)) for (let i = start; i <= end; i++) numbersToProcess.add(i);
+                } else {
+                    const num = parseInt(cleanPart, 10);
+                    if (!isNaN(num)) numbersToProcess.add(num);
+                }
+            }
+            let overrides = {};
+            const lines = overridesStr.split('\n');
+            for (let line of lines) {
+                if (line.includes('|||')) {
+                    const splitIdx = line.indexOf('|||');
+                    const numStr = line.substring(0, splitIdx).replace(/[^0-9]/g, '');
+                    const promptText = line.substring(splitIdx + 3).trim();
+                    const num = parseInt(numStr, 10);
+                    if (!isNaN(num)) { overrides[num] = promptText; }
+                }
+            }
+            let sortedNums = Array.from(numbersToProcess).sort((a, b) => a - b);
+            let resultLines = [];
+            for (let num of sortedNums) {
+                const sCode = "S" + String(num).padStart(3, '0');
+                const finalPrompt = overrides[num] !== undefined ? overrides[num] : defaultPrompt;
+                resultLines.push(`${sCode} prompt : ${finalPrompt} |||`);
+            }
+            document.getElementById('promptOutput').value = resultLines.join('\n\n');
+        }
+
+        function copyPrompts() {
+            const output = document.getElementById('promptOutput');
+            output.select(); document.execCommand("copy"); alert("복사됨!");
+        }
+
+        async function handleOverridesFileUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const text = await file.text();
+            document.getElementById('overridesInput').value = text;
+            event.target.value = '';
+            alert("예외 조건 txt 파일을 불러왔습니다!");
+        }
+
+        // ==========================================
+        // 3. Scene 8 로직
+        // ==========================================
+        function timeToSeconds(timeStr) {
+            const parts = timeStr.split(':');
+            const secParts = parts[2].split(',');
+            return (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60) + parseInt(secParts[0], 10) + (parseInt(secParts[1], 10) / 1000);
+        }
+        function parseSRT(srtText) {
+            const blocks = srtText.trim().replace(/\r\n/g, '\n').split('\n\n');
+            const parsedBlocks = [];
+            blocks.forEach(block => {
+                const lines = block.split('\n');
+                if (lines.length >= 3) {
+                    const times = lines[1].split(' --> ');
+                    if (times.length === 2) {
+                        const start = timeToSeconds(times[0]);
+                        const end = timeToSeconds(times[1]);
+                        const text = lines.slice(2).join(' ').trim();
+                        parsedBlocks.push({ start, end, text });
+                    }
+                }
+            });
+            return parsedBlocks;
+        }
+        function processSRT() {
+            const fileInput = document.getElementById('srtFileInput');
+            if (!fileInput.files.length) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const subs = parseSRT(e.target.result);
+                generateScenes(subs);
+            };
+            reader.readAsText(fileInput.files[0], 'UTF-8');
+        }
+        function generateScenes(subs) {
+            let scenes = []; let currentSceneSubs = []; let currentStartTime = 0;
+            for (let i = 0; i < subs.length; i++) {
+                let sub = subs[i];
+                if (currentSceneSubs.length === 0) { currentSceneSubs.push(sub); currentStartTime = sub.start; continue; }
+                let currentDuration = currentSceneSubs[currentSceneSubs.length - 1].end - currentStartTime;
+                let predictedDuration = sub.end - currentStartTime;
+                if (predictedDuration > 8.5) {
+                    if (currentDuration >= 4.5) {
+                        scenes.push({ duration: currentDuration, text: currentSceneSubs.map(s => s.text).join(' ') });
+                        currentSceneSubs = [sub]; currentStartTime = sub.start;
+                    } else { currentSceneSubs.push(sub); }
+                } else { currentSceneSubs.push(sub); }
+            }
+            if (currentSceneSubs.length > 0) {
+                scenes.push({ duration: currentSceneSubs[currentSceneSubs.length - 1].end - currentStartTime, text: currentSceneSubs.map(s => s.text).join(' ') });
+            }
+            let outputLines = [];
+            scenes.forEach((scene, index) => {
+                let sCode = "S" + String(index + 1).padStart(3, '0');
+                outputLines.push(`[${sCode}] ${scene.text} (약 ${scene.duration.toFixed(1)}초)`);
+            });
+            document.getElementById('subtitleOutput').value = outputLines.join('\n\n');
+        }
+        function copySubtitleResult() {
+            const output = document.getElementById('subtitleOutput');
+            output.select(); document.execCommand("copy"); alert("복사됨!");
+        }
+
+        // ==========================================
+        // 4. 발표 시간 계산기
+        // ==========================================
+        function updateSpeechStats() {
+            const text = document.getElementById('speechScriptInput').value || '';
+            const speed = parseInt(document.getElementById('speechSpeedInput').value, 10) || 100;
+            const charsWithSpace = text.length;
+            const charsNoSpace = text.replace(/\s/g, '').length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+            document.getElementById('speechSpeedValue').textContent = `${speed}%`;
+            document.getElementById('speechCharsInfo').textContent = `공백 포함: ${charsWithSpace}자`;
+            document.getElementById('speechCharsNoSpaceInfo').textContent = `공백 제외: ${charsNoSpace}자`;
+            document.getElementById('speechWordInfo').textContent = `단어 수: ${words}개`;
+        }
+
+        function calculateSpeechTime() {
+            const text = document.getElementById('speechScriptInput').value || '';
+            const speed = parseInt(document.getElementById('speechSpeedInput').value, 10) || 100;
+            const charsNoSpace = text.replace(/\s/g, '').length;
+            const charsWithSpace = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const baseCharsPerMinute = 300;
+            const adjustedCharsPerMinute = baseCharsPerMinute * (speed / 100);
+            const totalSeconds = charsNoSpace > 0 ? Math.round((charsNoSpace / adjustedCharsPerMinute) * 60) : 0;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            let resultText = `${totalSeconds}초`;
+            if (minutes > 0) {
+                resultText = `${minutes}분 ${seconds}초`;
+            }
+
+            document.getElementById('speechResult').textContent = resultText;
+            document.getElementById('speechDetailInfo').textContent = `예상 읽기 기준: 분당 ${Math.round(adjustedCharsPerMinute)}자 / 총 ${charsNoSpace}자`;
+            document.getElementById('speechSummaryOutput').value =
+`공백 포함: ${charsWithSpace}자
+공백 제외: ${charsNoSpace}자
+단어 수: ${words}개
+예상 읽기 기준: 분당 ${Math.round(adjustedCharsPerMinute)}자 / 총 ${charsNoSpace}자`;
+            updateSpeechStats();
+        }
+
+        function copySpeechSummary() {
+            const output = document.getElementById('speechSummaryOutput');
+            output.select();
+            document.execCommand("copy");
+            alert("발표 시간 정보가 복사되었습니다!");
+        }
+    </script>
+</body>
+</html>
