@@ -305,6 +305,7 @@
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 12px;">
                 <button class="btn btn-primary" onclick="buildSrtBlocks()">🛠️ SRT 형식으로 정리하기</button>
                 <button class="btn btn-success" onclick="copyBuiltSrt()">📋 정리 결과 복사하기</button>
+                <button class="btn btn-warning" onclick="downloadBuiltSrt()">💾 .srt로 바로 저장하기</button>
             </div>
             <textarea id="builtSrtOutput" rows="10" readonly placeholder="여기에 번호가 붙은 SRT 형식 결과가 나옵니다."></textarea>
         </div>
@@ -842,6 +843,38 @@
             output.select();
             document.execCommand("copy");
             alert("정리된 SRT 결과가 복사되었습니다!");
+        }
+
+        async function downloadBuiltSrt() {
+            const fileInput = document.getElementById('rawSubtitleFileInput');
+            const output = document.getElementById('builtSrtOutput');
+
+            if (!fileInput.files.length) {
+                alert("먼저 텍스트 파일이나 SRT 파일을 선택해주세요!");
+                return;
+            }
+
+            if (!output.value.trim()) {
+                const rawText = await fileInput.files[0].text();
+                output.value = normalizeTranscriptToSrt(rawText);
+            }
+
+            if (!output.value.trim()) {
+                alert("저장할 SRT 결과가 없습니다.");
+                return;
+            }
+
+            const sourceName = fileInput.files[0].name || 'subtitle.txt';
+            const saveName = sourceName.replace(/\.[^.]+$/, '') + '.srt';
+            const blob = new Blob([output.value], { type: 'application/x-subrip;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = saveName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            alert(`'${saveName}' 파일로 저장했습니다!`);
         }
 
         // ==========================================
