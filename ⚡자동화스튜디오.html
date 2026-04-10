@@ -240,6 +240,7 @@
         <button class="tab-btn" onclick="switchTab('promptTab', this)">📝 2. 프롬프트 자동 생성기</button>
         <button class="tab-btn" onclick="switchTab('subtitleTab', this)">🎬 3. Scene 8 (자막 분할)</button>
         <button class="tab-btn" onclick="switchTab('speechTab', this)">⏱️ 4. 발표 시간 계산기</button>
+        <button class="tab-btn" onclick="switchTab('imagePromptExtractTab', this)">🖼️ 5. 이미지 프롬프트 추출기</button>
     </div>
 
     <div id="renameTab" class="card active">
@@ -396,6 +397,22 @@
         </div>
     </div>
 
+    <div id="imagePromptExtractTab" class="card">
+        <h2>🖼️ 이미지 프롬프트 추출기</h2>
+        <p>전체 이미지 프롬프트 묶음을 넣고 번호를 입력하면, 해당 번호의 프롬프트만 원래 형식 그대로 추출합니다.</p>
+        <div class="input-group">
+            <label>1. 번호 범위 입력 (예: 1,4,5,9 또는 S001,S004,S005,S009)</label>
+            <textarea id="imageExtractRangeInput" rows="3" placeholder="예: S001,S004,S005,S009"></textarea>
+        </div>
+        <div class="input-group">
+            <label>2. 전체 이미지 프롬프트 붙여넣기</label>
+            <textarea id="imagePromptSourceInput" rows="12" placeholder="예:&#10;S001 Prompt : ... |||&#10;S011&gt;S012 Prompt : ... |||"></textarea>
+        </div>
+        <button class="btn btn-success" onclick="extractImagePrompts()">✨ 이미지 프롬프트 추출하기</button>
+        <button class="btn btn-primary" onclick="copyImagePromptExtractResult()">📋 결과 복사하기</button>
+        <textarea id="imagePromptExtractOutput" rows="12" readonly style="margin-top:15px;" placeholder="여기에 추출 결과가 표시됩니다."></textarea>
+    </div>
+
     <script>
         // ==========================================
         // 초기화 및 로컬 스토리지 (자동 저장) 로직
@@ -407,6 +424,8 @@
             const overridesFileEl = document.getElementById('overridesFileInput');
             const subtitleMergeMinEl = document.getElementById('subtitleMergeMinInput');
             const subtitleMergeMaxEl = document.getElementById('subtitleMergeMaxInput');
+            const imageExtractRangeEl = document.getElementById('imageExtractRangeInput');
+            const imagePromptSourceEl = document.getElementById('imagePromptSourceInput');
             
             // 1. 저장된 프롬프트가 있으면 불러오기
             const savedPrompt = localStorage.getItem('savedDefaultPrompt');
@@ -429,6 +448,14 @@
             if (savedSubtitleMergeMax) {
                 subtitleMergeMaxEl.value = savedSubtitleMergeMax;
             }
+            const savedImageExtractRange = localStorage.getItem('savedImageExtractRange');
+            if (savedImageExtractRange) {
+                imageExtractRangeEl.value = savedImageExtractRange;
+            }
+            const savedImagePromptSource = localStorage.getItem('savedImagePromptSource');
+            if (savedImagePromptSource) {
+                imagePromptSourceEl.value = savedImagePromptSource;
+            }
 
             // 2. 글자가 바뀔 때마다 실시간으로 브라우저에 저장하기
             defaultPromptEl.addEventListener('input', () => {
@@ -448,6 +475,12 @@
             });
             subtitleMergeMaxEl.addEventListener('input', () => {
                 localStorage.setItem('savedSubtitleMergeMax', subtitleMergeMaxEl.value);
+            });
+            imageExtractRangeEl.addEventListener('input', () => {
+                localStorage.setItem('savedImageExtractRange', imageExtractRangeEl.value);
+            });
+            imagePromptSourceEl.addEventListener('input', () => {
+                localStorage.setItem('savedImagePromptSource', imagePromptSourceEl.value);
             });
             calculateSpeechTime();
         });
@@ -724,6 +757,56 @@
         function copyPrompts() {
             const output = document.getElementById('promptOutput');
             output.select(); document.execCommand("copy"); alert("복사됨!");
+        }
+
+        function extractImagePrompts() {
+            const rangeStr = document.getElementById('imageExtractRangeInput').value;
+            const sourceText = document.getElementById('imagePromptSourceInput').value;
+            const outputEl = document.getElementById('imagePromptExtractOutput');
+            const selectedNumbers = new Set(parsePromptRangeNumbers(rangeStr));
+
+            if (!selectedNumbers.size) {
+                outputEl.value = '';
+                alert("번호 범위 입력에 먼저 번호를 넣어주세요!");
+                return;
+            }
+
+            if (!sourceText.trim()) {
+                outputEl.value = '';
+                alert("전체 이미지 프롬프트를 먼저 붙여넣어주세요!");
+                return;
+            }
+
+            const blocks = sourceText
+                .split('|||')
+                .map(block => block.trim())
+                .filter(Boolean);
+
+            const results = [];
+            for (const block of blocks) {
+                const match = block.match(/^S?(\d{1,3})(?:\s*>\s*S?(\d{1,3}))?\s*Prompt\s*:/i);
+                if (!match) continue;
+                const startNumber = parseInt(match[1], 10);
+                if (selectedNumbers.has(startNumber)) {
+                    results.push(`${block} |||`);
+                }
+            }
+
+            outputEl.value = results.join('\n\n');
+            if (!results.length) {
+                alert("입력한 번호와 일치하는 이미지 프롬프트를 찾지 못했습니다.");
+            }
+        }
+
+        function copyImagePromptExtractResult() {
+            const output = document.getElementById('imagePromptExtractOutput');
+            if (!output.value.trim()) {
+                alert("먼저 이미지 프롬프트 추출하기를 실행해주세요!");
+                return;
+            }
+            output.select();
+            document.execCommand("copy");
+            alert("이미지 프롬프트 추출 결과를 복사했습니다!");
         }
 
         async function handleOverridesFileUpload(event) {
