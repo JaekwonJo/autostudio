@@ -314,9 +314,16 @@
             </div>
             <textarea id="overridesInput" rows="5">004 ||| 3d animated pixar studio style...</textarea>
         </div>
-        <button class="btn btn-success" onclick="generatePrompts()">✨ 프롬프트 일괄 생성하기</button>
-        <button class="btn btn-primary" onclick="copyPrompts()">📋 결과 복사하기</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px;">
+            <button class="btn btn-success" onclick="generatePrompts()">✨ 프롬프트 일괄 생성하기</button>
+            <button class="btn btn-primary" onclick="copyPrompts()">📋 결과 복사하기</button>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px;">
+            <button class="btn btn-success" onclick="generateTaggedPrompts()">🏷️ @프롬프트 일괄 생성하기</button>
+            <button class="btn btn-primary" onclick="copyTaggedPrompts()">📋 @결과 복사하기</button>
+        </div>
         <textarea id="promptOutput" rows="10" readonly style="margin-top:15px;"></textarea>
+        <textarea id="taggedPromptOutput" rows="10" readonly style="margin-top:15px;" placeholder="@S001. 형태가 붙은 결과가 여기에 나옵니다."></textarea>
     </div>
 
     <div id="subtitleTab" class="card">
@@ -757,6 +764,43 @@
         function copyPrompts() {
             const output = document.getElementById('promptOutput');
             output.select(); document.execCommand("copy"); alert("복사됨!");
+        }
+
+        function generateTaggedPrompts() {
+            const rangeStr = document.getElementById('rangeInput').value;
+            const defaultPrompt = document.getElementById('defaultPromptInput').value.trim();
+            const overridesStr = document.getElementById('overridesInput').value;
+            const sortedNums = parsePromptRangeNumbers(rangeStr);
+            let overrides = {};
+            const lines = overridesStr.split('\n');
+            for (let line of lines) {
+                if (line.includes('|||')) {
+                    const splitIdx = line.indexOf('|||');
+                    const numStr = line.substring(0, splitIdx).replace(/[^0-9]/g, '');
+                    const promptText = line.substring(splitIdx + 3).trim();
+                    const num = parseInt(numStr, 10);
+                    if (!isNaN(num)) { overrides[num] = promptText; }
+                }
+            }
+
+            let resultLines = [];
+            for (let num of sortedNums) {
+                const sCode = "S" + String(num).padStart(3, '0');
+                const finalPrompt = overrides[num] !== undefined ? overrides[num] : defaultPrompt;
+                resultLines.push(`${sCode} prompt : @${sCode}. ${finalPrompt} |||`);
+            }
+            document.getElementById('taggedPromptOutput').value = resultLines.join('\n\n');
+        }
+
+        function copyTaggedPrompts() {
+            const output = document.getElementById('taggedPromptOutput');
+            if (!output.value.trim()) {
+                alert("@프롬프트를 먼저 생성해주세요!");
+                return;
+            }
+            output.select();
+            document.execCommand("copy");
+            alert("@프롬프트 결과를 복사했습니다!");
         }
 
         function extractImagePrompts() {
