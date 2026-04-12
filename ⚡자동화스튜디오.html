@@ -736,22 +736,43 @@
             alert("파일 열기용 복붙 형식이 복사되었습니다!");
         }
 
+        function parsePromptOverrides(overridesStr) {
+            const overrides = {};
+            const chunks = String(overridesStr || '')
+                .split('|||')
+                .map(chunk => chunk.trim())
+                .filter(Boolean);
+
+            for (const chunk of chunks) {
+                let match = chunk.match(/^S?(\d{1,3})\s*prompt\s*:\s*(.*)$/i);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    const promptText = String(match[2] || '').trim();
+                    if (!isNaN(num) && promptText) {
+                        overrides[num] = promptText;
+                    }
+                    continue;
+                }
+
+                match = chunk.match(/^S?(\d{1,3})\s*(?:\|\|\||:)\s*(.*)$/i);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    const promptText = String(match[2] || '').trim();
+                    if (!isNaN(num) && promptText) {
+                        overrides[num] = promptText;
+                    }
+                }
+            }
+
+            return overrides;
+        }
+
         function generatePrompts() {
             const rangeStr = document.getElementById('rangeInput').value;
             const defaultPrompt = document.getElementById('defaultPromptInput').value.trim();
             const overridesStr = document.getElementById('overridesInput').value;
             const sortedNums = parsePromptRangeNumbers(rangeStr);
-            let overrides = {};
-            const lines = overridesStr.split('\n');
-            for (let line of lines) {
-                if (line.includes('|||')) {
-                    const splitIdx = line.indexOf('|||');
-                    const numStr = line.substring(0, splitIdx).replace(/[^0-9]/g, '');
-                    const promptText = line.substring(splitIdx + 3).trim();
-                    const num = parseInt(numStr, 10);
-                    if (!isNaN(num)) { overrides[num] = promptText; }
-                }
-            }
+            const overrides = parsePromptOverrides(overridesStr);
             let resultLines = [];
             for (let num of sortedNums) {
                 const sCode = "S" + String(num).padStart(3, '0');
@@ -771,17 +792,7 @@
             const defaultPrompt = document.getElementById('defaultPromptInput').value.trim();
             const overridesStr = document.getElementById('overridesInput').value;
             const sortedNums = parsePromptRangeNumbers(rangeStr);
-            let overrides = {};
-            const lines = overridesStr.split('\n');
-            for (let line of lines) {
-                if (line.includes('|||')) {
-                    const splitIdx = line.indexOf('|||');
-                    const numStr = line.substring(0, splitIdx).replace(/[^0-9]/g, '');
-                    const promptText = line.substring(splitIdx + 3).trim();
-                    const num = parseInt(numStr, 10);
-                    if (!isNaN(num)) { overrides[num] = promptText; }
-                }
-            }
+            const overrides = parsePromptOverrides(overridesStr);
 
             let resultLines = [];
             for (let num of sortedNums) {
