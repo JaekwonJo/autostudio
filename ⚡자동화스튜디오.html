@@ -535,6 +535,13 @@
             return /^@?S\d{3,4}(?: \(\d+\))?\.[^.]+$/i.test(String(fileName || "").trim());
         }
 
+        function detectPreferredSceneTagPrefix(fileName) {
+            const text = String(fileName || "").trim();
+            if (/^@S\d{3,4}(?: \(\d+\))?\.[^.]+$/i.test(text)) return "@S";
+            if (/^S\d{3,4}(?: \(\d+\))?\.[^.]+$/i.test(text)) return "S";
+            return "";
+        }
+
         async function loadFiles() {
             fileTasks = [];
             const tbody = document.getElementById('previewBody');
@@ -608,10 +615,14 @@
             const start = parseInt(match[1], 10);
             const end = parseInt(match[2], 10);
             let existingNumbers = new Set();
+            let preferredPrefix = "";
 
             // 폴더 내 파일 훑으면서 존재하는 번호들 Set에 저장
             for await (const entry of directoryHandle.values()) {
                 if (entry.kind === 'file') {
+                    if (!preferredPrefix) {
+                        preferredPrefix = detectPreferredSceneTagPrefix(entry.name);
+                    }
                     const sceneNumber = extractSceneNumberFromFilename(entry.name);
                     if (sceneNumber !== null) {
                         existingNumbers.add(sceneNumber);
@@ -619,10 +630,14 @@
                 }
             }
 
+            if (!preferredPrefix) {
+                preferredPrefix = "S";
+            }
+
             let missing = [];
             for (let i = start; i <= end; i++) {
                 if (!existingNumbers.has(i)) {
-                    missing.push("S" + String(i).padStart(3, '0'));
+                    missing.push(preferredPrefix + String(i).padStart(3, '0'));
                 }
             }
 
