@@ -263,6 +263,11 @@
             <h4 style="margin-top: 0; margin-bottom: 10px; color: #2c3e50;">🔍 누락된 파일(빈 번호) 찾기</h4>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="text" id="missingRangeInput" placeholder="예: 1-135" style="width: 200px;">
+                <select id="missingTypeFilter" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #fff;">
+                    <option value="all">전체</option>
+                    <option value="image">이미지</option>
+                    <option value="video">영상</option>
+                </select>
                 <button class="btn btn-primary" style="margin: 0;" onclick="findMissingNumbers()">찾기</button>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
@@ -510,6 +515,24 @@
         let directoryHandle;
         let fileTasks = []; 
         let historyLog = []; 
+        const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif']);
+        const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v']);
+
+        function getFileExtension(fileName) {
+            const text = String(fileName || "").trim();
+            const dotIndex = text.lastIndexOf('.');
+            if (dotIndex < 0) return '';
+            return text.substring(dotIndex).toLowerCase();
+        }
+
+        function matchesMissingTypeFilter(fileName, filterValue) {
+            const mode = String(filterValue || 'all').trim().toLowerCase();
+            if (mode === 'all') return true;
+            const ext = getFileExtension(fileName);
+            if (mode === 'image') return IMAGE_EXTENSIONS.has(ext);
+            if (mode === 'video') return VIDEO_EXTENSIONS.has(ext);
+            return true;
+        }
 
         async function selectFolder() {
             try {
@@ -620,10 +643,16 @@
             const end = parseInt(match[2], 10);
             let existingNumbers = new Set();
             let preferredPrefix = "";
+            const typeFilter = document.getElementById('missingTypeFilter').value;
+            let matchedFileCount = 0;
 
             // 폴더 내 파일 훑으면서 존재하는 번호들 Set에 저장
             for await (const entry of directoryHandle.values()) {
                 if (entry.kind === 'file') {
+                    if (!matchesMissingTypeFilter(entry.name, typeFilter)) {
+                        continue;
+                    }
+                    matchedFileCount++;
                     if (!preferredPrefix) {
                         preferredPrefix = detectPreferredSceneTagPrefix(entry.name);
                     }
@@ -647,17 +676,24 @@
 
             const outputEl = document.getElementById('missingOutput');
             const outputPlainEl = document.getElementById('missingOutputPlain');
+            const typeLabel = typeFilter === 'image' ? '이미지' : (typeFilter === 'video' ? '영상' : '전체');
+            if (matchedFileCount === 0) {
+                outputEl.value = `${typeLabel} 파일이 없습니다.`;
+                outputPlainEl.value = `${typeLabel} 파일이 없습니다.`;
+                alert(`선택 폴더 안에 ${typeLabel} 파일이 없습니다.`);
+                return;
+            }
             if (missing.length === 0) {
                 outputEl.value = "완벽합니다! 누락된 번호가 없습니다.";
                 outputPlainEl.value = "완벽합니다! 누락된 번호가 없습니다.";
-                alert("누락된 파일 없이 모두 존재합니다!");
+                alert(`${typeLabel} 기준으로 누락된 파일 없이 모두 존재합니다!`);
             } else {
                 outputEl.value = missing.join(',');
                 outputPlainEl.value = missing.map(item => {
                     const match = String(item || "").match(/(\d{3,4})/);
                     return match ? match[1] : String(item || "");
                 }).join(',');
-                alert(`총 ${missing.length}개의 번호가 누락되었습니다.`);
+                alert(`${typeLabel} 기준으로 총 ${missing.length}개의 번호가 누락되었습니다.`);
             }
         }
 
