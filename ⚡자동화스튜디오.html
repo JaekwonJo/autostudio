@@ -269,6 +269,10 @@
                 <input type="text" id="missingOutput" readonly placeholder="누락된 번호가 여기에 표시됩니다. (예: S004,S009)" style="flex: 1; background: #fff;">
                 <button class="btn btn-success" style="margin: 0;" onclick="copyMissing()">📋 복사</button>
             </div>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+                <input type="text" id="missingOutputPlain" readonly placeholder="그록 워커용 숫자만 표시됩니다. (예: 004,009)" style="flex: 1; background: #fff;">
+                <button class="btn btn-success" style="margin: 0;" onclick="copyMissingPlain()">📋 숫자만 복사</button>
+            </div>
         </div>
 
         <h3 style="margin-top: 30px;">📋 작업 내역 및 미리보기</h3>
@@ -642,11 +646,17 @@
             }
 
             const outputEl = document.getElementById('missingOutput');
+            const outputPlainEl = document.getElementById('missingOutputPlain');
             if (missing.length === 0) {
                 outputEl.value = "완벽합니다! 누락된 번호가 없습니다.";
+                outputPlainEl.value = "완벽합니다! 누락된 번호가 없습니다.";
                 alert("누락된 파일 없이 모두 존재합니다!");
             } else {
                 outputEl.value = missing.join(',');
+                outputPlainEl.value = missing.map(item => {
+                    const match = String(item || "").match(/(\d{3,4})/);
+                    return match ? match[1] : String(item || "");
+                }).join(',');
                 alert(`총 ${missing.length}개의 번호가 누락되었습니다.`);
             }
         }
@@ -660,6 +670,17 @@
             outputEl.select(); 
             document.execCommand("copy"); 
             alert("누락된 번호가 복사되었습니다! 2번 탭에 붙여넣기 하세요.");
+        }
+
+        function copyMissingPlain() {
+            const outputEl = document.getElementById('missingOutputPlain');
+            if (!outputEl.value || outputEl.value.includes("없습니다")) {
+                alert("복사할 숫자 번호가 없습니다.");
+                return;
+            }
+            outputEl.select();
+            document.execCommand("copy");
+            alert("숫자만 복사되었습니다! 그록 워커 개별 번호칸에 붙여넣기 하세요.");
         }
 
         async function executeRename() {
