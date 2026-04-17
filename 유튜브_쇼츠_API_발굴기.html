@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유튜브 쇼츠 API 발굴기</title>
+    <title>유튜브 핫토픽 레이더</title>
     <style>
         :root {
             --bg: #f4f7f6;
@@ -304,12 +304,13 @@
 <body>
     <div class="wrap">
         <section class="hero">
-            <h1>유튜브 쇼츠 API 발굴기</h1>
+            <h1>유튜브 핫토픽 레이더</h1>
             <p>
                 크롤링이 아니라 <strong>공식 YouTube Data API v3</strong>로 찾는 도구입니다.
-                <strong>짧은 영상(videoDuration=short)</strong>만 먼저 가져오고,
-                그다음 <strong>조회수 / 업로드 날짜 / 길이(예: 60초 이하)</strong>로 다시 걸러서
-                사실상 <strong>고조회수 Shorts 발굴기</strong>처럼 쓰게 만들었습니다.
+                이제 <strong>쇼츠 발굴</strong>뿐 아니라
+                <strong>오늘 올라온 영상 중 조회수 높은 순</strong>,
+                <strong>최근 N일 기준 고조회수 영상</strong>도 같이 볼 수 있게 만들었습니다.
+                경제 / 역사 / 교육 같은 <strong>주제 프리셋</strong>도 함께 지원합니다.
             </p>
             <div class="hero-links">
                 <a href="https://developers.google.com/youtube/v3/getting-started" target="_blank" rel="noopener noreferrer">공식 시작 문서</a>
@@ -337,12 +338,35 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label for="searchMode">검색 모드</label>
+                        <select id="searchMode">
+                            <option value="shorts">쇼츠 발굴</option>
+                            <option value="today_hot">오늘의 고조회수 영상</option>
+                            <option value="period_hot">최근 N일 고조회수 영상</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="topicPreset">주제 프리셋</label>
+                        <select id="topicPreset">
+                            <option value="custom">직접 입력</option>
+                            <option value="economy">경제 / 재테크</option>
+                            <option value="history">역사</option>
+                            <option value="education">교육 / 공부</option>
+                            <option value="science">과학</option>
+                            <option value="ai">AI / 자동화</option>
+                            <option value="current_affairs">시사 / 뉴스</option>
+                            <option value="self_improvement">자기계발</option>
+                        </select>
+                    </div>
+
                     <div class="full">
                         <label for="query">검색어</label>
                         <textarea id="query" rows="3" placeholder="예: 알트코인, 비트코인, 미국주식, 경제위기, 동기부여"></textarea>
                         <div class="mini-note">
-                            검색어를 비우면 너무 넓게 잡혀서 품질이 떨어집니다. 보통은 키워드를 1개 이상 넣는 쪽이 좋습니다.
+                            주제 프리셋을 고르면 아래 검색어와 자동으로 합쳐집니다. 검색어를 비우면 너무 넓게 잡혀서 품질이 떨어질 수 있습니다.
                         </div>
+                        <div class="mini-note" id="topicPresetHint">현재는 직접 입력 모드입니다.</div>
                     </div>
 
                     <div>
@@ -370,17 +394,18 @@
                     <div>
                         <label for="minViews">최소 조회수</label>
                         <input id="minViews" type="number" min="0" step="1000" value="1000000">
+                        <div class="mini-note">예: 100000, 200000, 500000, 1000000</div>
                     </div>
                     <div>
                         <label for="maxSeconds">최대 길이(초)</label>
                         <input id="maxSeconds" type="number" min="1" max="240" value="60">
-                        <div class="mini-note">공식 API의 <span class="mono">videoDuration=short</span>는 4분 미만이라서, 여기서 한 번 더 좁힙니다.</div>
+                        <div class="mini-note" id="maxSecondsHint">쇼츠 모드에서는 <span class="mono">videoDuration=short</span>에 더해 여기서 한 번 더 좁힙니다.</div>
                     </div>
 
                     <div>
                         <label for="daysBack">최근 며칠 이내</label>
                         <input id="daysBack" type="number" min="0" max="3650" value="30">
-                        <div class="mini-note">0이면 날짜 제한 없이 검색합니다.</div>
+                        <div class="mini-note" id="daysBackHint">0이면 날짜 제한 없이 검색합니다.</div>
                     </div>
                     <div>
                         <label for="pageCount">검색 페이지 수</label>
@@ -400,7 +425,7 @@
                 <div class="action-row">
                     <button class="btn btn-primary" id="searchBtn">고조회수 쇼츠 찾기</button>
                     <button class="btn btn-secondary" id="copyIdsBtn">결과 ID 복사</button>
-                    <button class="btn btn-secondary" id="copyShortsBtn">결과 Shorts 링크 복사</button>
+                    <button class="btn btn-secondary" id="copyShortsBtn">결과 링크 복사</button>
                 </div>
             </section>
 
@@ -410,7 +435,8 @@
                     <p class="status-line" id="statusText">아직 검색 전입니다.</p>
                     <div class="pill-row" id="statusPills">
                         <span class="pill">공식 API 사용</span>
-                        <span class="pill">짧은 영상만 우선 검색</span>
+                        <span class="pill">모드 선택 가능</span>
+                        <span class="pill">주제 프리셋 지원</span>
                         <span class="pill">조회수 / 초 길이 재필터링</span>
                     </div>
                 </div>
@@ -422,10 +448,10 @@
 
                 <h3 style="margin-top:16px;">사용 팁</h3>
                 <div class="summary-box">
-                    1. 키워드는 너무 넓게 잡지 말고 주제별로 좁혀서 보세요.<br>
-                    2. <strong>최소 조회수</strong>를 100만, 300만, 500만 식으로 바꿔보세요.<br>
-                    3. <strong>최근 며칠</strong>을 7일 / 30일 / 90일로 바꿔보면 느낌이 많이 달라집니다.<br>
-                    4. 결과는 <strong>공식 Shorts 판정값</strong>이 아니라 <strong>짧은 영상 + 60초 이하</strong> 기준의 실전용 근사치입니다.
+                    1. `오늘의 고조회수 영상`은 보통 <strong>정렬: 조회수</strong>, <strong>최근 며칠: 1</strong>처럼 쓰면 좋습니다.<br>
+                    2. 경제 / 역사 / 교육처럼 프리셋을 먼저 고르고, 필요하면 검색어를 더 붙여 좁혀보세요.<br>
+                    3. <strong>최소 조회수</strong>를 10만, 20만, 50만, 100만 식으로 바꿔보세요.<br>
+                    4. 쇼츠 모드는 <strong>짧은 영상 + 60초 이하</strong> 기준의 실전용 근사치입니다.
                 </div>
             </section>
         </div>
@@ -436,15 +462,28 @@
                 <div class="results-meta" id="resultsMeta">결과 0개</div>
             </div>
             <div id="resultsWrap" class="empty-box">
-                여기에서 고조회수 Shorts 후보를 보게 됩니다.
+                여기에서 쇼츠 또는 주제별 고조회수 영상 후보를 보게 됩니다.
             </div>
         </section>
     </div>
 
     <script>
-        const STORAGE_KEY = "yt_shorts_api_finder_v1";
+        const STORAGE_KEY = "yt_hot_topic_radar_v2";
+        const TOPIC_PRESETS = {
+            custom: { label: "직접 입력", keywords: "" },
+            economy: { label: "경제 / 재테크", keywords: "경제 재테크 투자 주식 비트코인 환율 금리" },
+            history: { label: "역사", keywords: "역사 세계사 한국사 조선 근현대사 전쟁 문명" },
+            education: { label: "교육 / 공부", keywords: "교육 공부 학습 강의 수업 입시 개념 설명" },
+            science: { label: "과학", keywords: "과학 물리 화학 생물 우주 자연과학 실험" },
+            ai: { label: "AI / 자동화", keywords: "AI 인공지능 ChatGPT 자동화 생성형AI 프롬프트" },
+            current_affairs: { label: "시사 / 뉴스", keywords: "시사 뉴스 국제정세 정치 사회 경제 이슈" },
+            self_improvement: { label: "자기계발", keywords: "자기계발 동기부여 습관 성공 생산성 마인드셋" }
+        };
         const els = {
             apiKey: document.getElementById("apiKey"),
+            searchMode: document.getElementById("searchMode"),
+            topicPreset: document.getElementById("topicPreset"),
+            topicPresetHint: document.getElementById("topicPresetHint"),
             query: document.getElementById("query"),
             channelId: document.getElementById("channelId"),
             order: document.getElementById("order"),
@@ -452,7 +491,9 @@
             language: document.getElementById("language"),
             minViews: document.getElementById("minViews"),
             maxSeconds: document.getElementById("maxSeconds"),
+            maxSecondsHint: document.getElementById("maxSecondsHint"),
             daysBack: document.getElementById("daysBack"),
+            daysBackHint: document.getElementById("daysBackHint"),
             pageCount: document.getElementById("pageCount"),
             searchBtn: document.getElementById("searchBtn"),
             saveKeyBtn: document.getElementById("saveKeyBtn"),
@@ -483,6 +524,8 @@
         function saveSettings() {
             const payload = {
                 apiKey: els.apiKey.value.trim(),
+                searchMode: els.searchMode.value,
+                topicPreset: els.topicPreset.value,
                 query: els.query.value.trim(),
                 channelId: els.channelId.value.trim(),
                 order: els.order.value,
@@ -506,6 +549,8 @@
             try {
                 const data = JSON.parse(raw);
                 els.apiKey.value = data.apiKey || "";
+                els.searchMode.value = data.searchMode || "shorts";
+                els.topicPreset.value = data.topicPreset || "custom";
                 els.query.value = data.query || "";
                 els.channelId.value = data.channelId || "";
                 els.order.value = data.order || "viewCount";
@@ -518,6 +563,46 @@
             } catch (error) {
                 console.error(error);
             }
+        }
+
+        function getTopicPreset() {
+            return TOPIC_PRESETS[els.topicPreset.value] || TOPIC_PRESETS.custom;
+        }
+
+        function buildFinalQuery() {
+            const preset = getTopicPreset();
+            const query = els.query.value.trim();
+            return [preset.keywords, query].filter(Boolean).join(" ").trim();
+        }
+
+        function refreshTopicPresetHint() {
+            const preset = getTopicPreset();
+            if (!preset.keywords) {
+                els.topicPresetHint.textContent = "현재는 직접 입력 모드입니다.";
+                return;
+            }
+            els.topicPresetHint.textContent = `프리셋 키워드: ${preset.keywords}`;
+        }
+
+        function refreshModeUi() {
+            const mode = els.searchMode.value;
+            if (mode === "shorts") {
+                els.searchBtn.textContent = "고조회수 쇼츠 찾기";
+                els.copyShortsBtn.textContent = "결과 Shorts 링크 복사";
+                els.maxSecondsHint.innerHTML = '쇼츠 모드에서는 <span class="mono">videoDuration=short</span>에 더해 여기서 한 번 더 좁힙니다.';
+                els.daysBackHint.textContent = "0이면 날짜 제한 없이 검색합니다.";
+            } else if (mode === "today_hot") {
+                els.searchBtn.textContent = "오늘의 고조회수 영상 찾기";
+                els.copyShortsBtn.textContent = "결과 영상 링크 복사";
+                els.maxSecondsHint.textContent = "긴 영상도 찾을 수 있습니다. 너무 길면 여기서 잘라내세요.";
+                els.daysBackHint.textContent = "이 모드에서는 입력값과 상관없이 오늘 0시 이후 업로드 영상만 봅니다.";
+            } else {
+                els.searchBtn.textContent = "최근 N일 고조회수 영상 찾기";
+                els.copyShortsBtn.textContent = "결과 영상 링크 복사";
+                els.maxSecondsHint.textContent = "긴 영상도 찾을 수 있습니다. 너무 길면 여기서 잘라내세요.";
+                els.daysBackHint.textContent = "예: 7일, 30일, 90일. 0이면 날짜 제한 없이 봅니다.";
+            }
+            refreshTopicPresetHint();
         }
 
         function setStatus(text, pills = []) {
@@ -572,6 +657,12 @@
             return date.toISOString();
         }
 
+        function buildTodayStartIso() {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            return now.toISOString();
+        }
+
         async function fetchJson(url) {
             const response = await fetch(url);
             const data = await response.json();
@@ -584,7 +675,8 @@
 
         async function searchYouTube() {
             const apiKey = els.apiKey.value.trim();
-            const query = els.query.value.trim();
+            const mode = els.searchMode.value;
+            const query = buildFinalQuery();
             const channelId = els.channelId.value.trim();
             const order = els.order.value;
             const regionCode = els.regionCode.value.trim().toUpperCase();
@@ -592,7 +684,8 @@
             const minViews = Number(els.minViews.value || 0);
             const maxSeconds = Number(els.maxSeconds.value || 60);
             const pageCount = Math.min(10, Math.max(1, Number(els.pageCount.value || 1)));
-            const publishedAfter = buildPublishedAfter(els.daysBack.value);
+            const publishedAfter = mode === "today_hot" ? buildTodayStartIso() : buildPublishedAfter(els.daysBack.value);
+            const topicLabel = getTopicPreset().label;
 
             if (!apiKey) {
                 alert("API 키를 먼저 넣어주세요.");
@@ -609,6 +702,8 @@
             els.resultsWrap.innerHTML = '<div class="empty-box">검색 중입니다. 잠시만 기다려주세요...</div>';
             els.resultsMeta.textContent = "검색 중...";
             setStatus("공식 YouTube API로 검색 중입니다...", [
+                `모드: ${mode === "shorts" ? "쇼츠 발굴" : mode === "today_hot" ? "오늘의 고조회수 영상" : "최근 N일 고조회수 영상"}`,
+                `주제: ${topicLabel}`,
                 `정렬: ${order}`,
                 `최소 조회수: ${fmtNumber(minViews)}`,
                 `최대 길이: ${maxSeconds}초`,
@@ -626,8 +721,7 @@
                         part: "snippet",
                         type: "video",
                         maxResults: "50",
-                        order,
-                        videoDuration: "short"
+                        order
                     });
 
                     if (query) params.set("q", query);
@@ -636,6 +730,7 @@
                     if (language) params.set("relevanceLanguage", language);
                     if (publishedAfter) params.set("publishedAfter", publishedAfter);
                     if (nextPageToken) params.set("pageToken", nextPageToken);
+                    if (mode === "shorts") params.set("videoDuration", "short");
 
                     const searchUrl = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
                     const searchData = await fetchJson(searchUrl);
@@ -683,6 +778,7 @@
                             viewCount,
                             likeCount: Number(item.statistics?.likeCount || 0),
                             commentCount: Number(item.statistics?.commentCount || 0),
+                            isShortCandidate: seconds <= 60,
                             shortsUrl: toShortsUrl(item.id),
                             watchUrl: toWatchUrl(item.id)
                         };
@@ -696,6 +792,9 @@
 
                 const estimatedUnits = fetchedPages * 100 + detailCalls;
                 els.runSummary.innerHTML = `
+                    검색 모드: <strong>${mode === "shorts" ? "쇼츠 발굴" : mode === "today_hot" ? "오늘의 고조회수 영상" : "최근 N일 고조회수 영상"}</strong><br>
+                    주제 프리셋: <strong>${topicLabel}</strong><br>
+                    최종 검색어: <strong>${escapeHtml(query || "(없음)")}</strong><br>
                     검색 페이지 수: <strong>${fetchedPages}</strong><br>
                     후보 영상 수: <strong>${fmtNumber(allIds.length)}</strong><br>
                     상세 조회 호출 수: <strong>${detailCalls}</strong><br>
@@ -703,6 +802,7 @@
                     최종 조건 통과 개수: <strong>${fmtNumber(filtered.length)}개</strong>
                 `;
                 setStatus("검색이 끝났습니다.", [
+                    `${topicLabel}`,
                     `최종 결과 ${fmtNumber(filtered.length)}개`,
                     `후보 ${fmtNumber(allIds.length)}개`,
                     `대략 ${fmtNumber(estimatedUnits)} units 사용`
@@ -722,10 +822,11 @@
 
         function renderResults(items) {
             els.resultsMeta.textContent = `결과 ${fmtNumber(items.length)}개`;
+            const mode = els.searchMode.value;
 
             if (!items.length) {
                 els.resultsWrap.className = "";
-                els.resultsWrap.innerHTML = '<div class="empty-box">조건에 맞는 Shorts 후보가 없습니다. 검색어나 최소 조회수, 기간, 최대 길이를 조금 완화해 보세요.</div>';
+                els.resultsWrap.innerHTML = `<div class="empty-box">${mode === "shorts" ? "조건에 맞는 Shorts 후보가 없습니다." : "조건에 맞는 고조회수 영상이 없습니다."}<br><br>검색어나 최소 조회수, 기간, 최대 길이를 조금 완화해 보세요.</div>`;
                 return;
             }
 
@@ -733,6 +834,12 @@
             els.resultsWrap.innerHTML = items.map((item) => {
                 const published = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString("ko-KR") : "-";
                 const description = item.description ? escapeHtml(item.description.slice(0, 130)) : "설명 없음";
+                const primaryLinkHtml = (mode === "shorts" || item.isShortCandidate)
+                    ? `<a class="btn btn-primary" href="${escapeHtml(item.shortsUrl)}" target="_blank" rel="noopener noreferrer">Shorts 열기</a>`
+                    : `<a class="btn btn-primary" href="${escapeHtml(item.watchUrl)}" target="_blank" rel="noopener noreferrer">영상 열기</a>`;
+                const secondaryLinkHtml = (mode === "shorts" || item.isShortCandidate)
+                    ? `<a class="btn btn-secondary" href="${escapeHtml(item.watchUrl)}" target="_blank" rel="noopener noreferrer">watch 열기</a>`
+                    : "";
                 return `
                     <article class="result-card">
                         <div class="thumb-wrap">
@@ -761,8 +868,8 @@
                                 </div>
                             </div>
                             <div class="card-actions">
-                                <a class="btn btn-primary" href="${escapeHtml(item.shortsUrl)}" target="_blank" rel="noopener noreferrer">Shorts 열기</a>
-                                <a class="btn btn-secondary" href="${escapeHtml(item.watchUrl)}" target="_blank" rel="noopener noreferrer">watch 열기</a>
+                                ${primaryLinkHtml}
+                                ${secondaryLinkHtml}
                                 <button class="btn btn-secondary" data-copy="${escapeHtml(item.videoId)}">ID 복사</button>
                             </div>
                         </div>
@@ -797,9 +904,15 @@
                 alert("먼저 검색 결과를 만드세요.");
                 return;
             }
-            const payload = lastResults.map((item) => item.shortsUrl).join("\n");
+            const mode = els.searchMode.value;
+            const payload = lastResults.map((item) => {
+                if (mode === "shorts" || item.isShortCandidate) {
+                    return item.shortsUrl;
+                }
+                return item.watchUrl;
+            }).join("\n");
             await navigator.clipboard.writeText(payload);
-            alert("Shorts 링크를 복사했습니다.");
+            alert(mode === "shorts" ? "Shorts 링크를 복사했습니다." : "영상 링크를 복사했습니다.");
         }
 
         els.searchBtn.addEventListener("click", searchYouTube);
@@ -810,6 +923,8 @@
         els.clearKeyBtn.addEventListener("click", () => {
             localStorage.removeItem(STORAGE_KEY);
             els.apiKey.value = "";
+            els.searchMode.value = "shorts";
+            els.topicPreset.value = "custom";
             els.query.value = "";
             els.channelId.value = "";
             els.order.value = "viewCount";
@@ -819,10 +934,32 @@
             els.maxSeconds.value = "60";
             els.daysBack.value = "30";
             els.pageCount.value = "2";
+            refreshModeUi();
             alert("저장된 API 키와 설정을 지웠습니다.");
         });
         els.copyIdsBtn.addEventListener("click", copyResultIds);
         els.copyShortsBtn.addEventListener("click", copyResultShortsUrls);
+        els.searchMode.addEventListener("change", () => {
+            if (els.searchMode.value === "shorts") {
+                els.order.value = "viewCount";
+                els.maxSeconds.value = "60";
+                els.daysBack.value = "30";
+            } else if (els.searchMode.value === "today_hot") {
+                els.order.value = "viewCount";
+                els.maxSeconds.value = "7200";
+                els.daysBack.value = "1";
+            } else {
+                els.order.value = "viewCount";
+                els.maxSeconds.value = "7200";
+                els.daysBack.value = "7";
+            }
+            refreshModeUi();
+            saveSettings();
+        });
+        els.topicPreset.addEventListener("change", () => {
+            refreshModeUi();
+            saveSettings();
+        });
 
         [
             els.apiKey, els.query, els.channelId, els.order, els.regionCode,
@@ -832,6 +969,7 @@
         });
 
         loadSettings();
+        refreshModeUi();
     </script>
 </body>
 </html>
