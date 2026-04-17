@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 쇼츠 API 발굴기</title>
+    <style>
+        :root {
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --line: #d9e2ec;
+            --text: #243447;
+            --sub: #52606d;
+            --blue: #007bff;
+            --blue-dark: #005ec4;
+            --green: #28a745;
+            --yellow: #ffc107;
+            --danger: #dc3545;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Malgun Gothic", sans-serif;
+        }
+        .wrap {
+            max-width: 1220px;
+            margin: 0 auto;
+        }
+        .hero, .panel, .result-card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 6px 18px rgba(31, 41, 55, 0.08);
+        }
+        .hero {
+            padding: 22px;
+            margin-bottom: 18px;
+        }
+        .hero h1 {
+            margin: 0 0 10px;
+            font-size: 30px;
+        }
+        .hero p {
+            margin: 0;
+            color: var(--sub);
+            line-height: 1.7;
+        }
+        .hero-links {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .hero-links a {
+            text-decoration: none;
+            color: var(--blue-dark);
+            font-weight: bold;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 18px;
+        }
+        .panel {
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+        .panel h2 {
+            margin: 0 0 14px;
+            font-size: 22px;
+        }
+        .panel h3 {
+            margin: 0 0 10px;
+            font-size: 17px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .full {
+            grid-column: 1 / -1;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #334e68;
+        }
+        input, select, textarea {
+            width: 100%;
+            border: 1px solid #cbd5e0;
+            border-radius: 10px;
+            padding: 11px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #fff;
+        }
+        input[type="number"] {
+            appearance: textfield;
+        }
+        .mini-note {
+            margin-top: 5px;
+            font-size: 12px;
+            color: var(--sub);
+            line-height: 1.5;
+        }
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .btn {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.18s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn-primary {
+            background: var(--blue);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--blue-dark);
+        }
+        .btn-secondary {
+            background: #e9eef5;
+            color: #274c77;
+        }
+        .btn-secondary:hover {
+            background: #dfe7f2;
+        }
+        .btn-success {
+            background: var(--green);
+            color: white;
+        }
+        .btn-danger {
+            background: #fdf0f2;
+            color: #b42318;
+            border: 1px solid #f3c5cd;
+        }
+        .summary-box {
+            background: #f8fafc;
+            border: 1px solid #d9e2ec;
+            border-radius: 12px;
+            padding: 14px;
+            line-height: 1.7;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+        .summary-box strong {
+            color: #102a43;
+        }
+        .status-box {
+            background: #eef4ff;
+            border: 1px solid #cfe0ff;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 18px;
+            line-height: 1.7;
+        }
+        .status-line {
+            margin: 0;
+            font-size: 14px;
+        }
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .pill {
+            background: #fff;
+            border: 1px solid #d7e3f4;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #355070;
+        }
+        .results-head {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .results-meta {
+            color: var(--sub);
+            font-size: 14px;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 14px;
+        }
+        .result-card {
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .thumb-wrap {
+            position: relative;
+            aspect-ratio: 9 / 16;
+            background: #e9ecef;
+        }
+        .thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .thumb-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 5px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .card-body {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .card-title {
+            font-size: 17px;
+            font-weight: bold;
+            line-height: 1.45;
+            color: #102a43;
+        }
+        .card-sub {
+            color: var(--sub);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .meta-item {
+            background: #f8fafc;
+            border: 1px solid #e3ebf3;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .meta-item strong {
+            display: block;
+            font-size: 11px;
+            color: #486581;
+            margin-bottom: 3px;
+        }
+        .card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 2px;
+        }
+        .card-actions .btn {
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+        .empty-box {
+            border: 2px dashed #cbd5e1;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 30px 18px;
+            text-align: center;
+            color: var(--sub);
+        }
+        .mono {
+            font-family: Consolas, "Courier New", monospace;
+        }
+        @media (max-width: 920px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section class="hero">
+            <h1>유튜브 쇼츠 API 발굴기</h1>
+            <p>
+                크롤링이 아니라 <strong>공식 YouTube Data API v3</strong>로 찾는 도구입니다.
+                <strong>짧은 영상(videoDuration=short)</strong>만 먼저 가져오고,
+                그다음 <strong>조회수 / 업로드 날짜 / 길이(예: 60초 이하)</strong>로 다시 걸러서
+                사실상 <strong>고조회수 Shorts 발굴기</strong>처럼 쓰게 만들었습니다.
+            </p>
+            <div class="hero-links">
+                <a href="https://developers.google.com/youtube/v3/getting-started" target="_blank" rel="noopener noreferrer">공식 시작 문서</a>
+                <a href="https://developers.google.com/youtube/v3/determine_quota_cost" target="_blank" rel="noopener noreferrer">공식 쿼터 문서</a>
+                <a href="https://developers.google.com/youtube/v3/docs/search/list" target="_blank" rel="noopener noreferrer">search.list 100 units</a>
+                <a href="https://developers.google.com/youtube/v3/docs/videos/list" target="_blank" rel="noopener noreferrer">videos.list 1 unit</a>
+            </div>
+        </section>
+
+        <div class="grid">
+            <section class="panel">
+                <h2>설정</h2>
+                <div class="form-grid">
+                    <div class="full">
+                        <label for="apiKey">YouTube API Key</label>
+                        <input id="apiKey" type="password" placeholder="여기에 API 키를 넣으세요">
+                        <div class="mini-note">
+                            이 HTML은 API 키를 브라우저 <span class="mono">localStorage</span>에만 저장합니다.
+                            <br>주의: <span class="mono">file://</span> 로 여는 로컬 HTML은 HTTP referrer 제한 키가 잘 안 맞을 수 있습니다. 개인용이면
+                            <strong>API 제한만 YouTube Data API로 걸고</strong> 테스트하는 쪽이 가장 단순합니다.
+                        </div>
+                        <div class="action-row">
+                            <button class="btn btn-secondary" id="saveKeyBtn">키 저장</button>
+                            <button class="btn btn-danger" id="clearKeyBtn">키 삭제</button>
+                        </div>
+                    </div>
+
+                    <div class="full">
+                        <label for="query">검색어</label>
+                        <textarea id="query" rows="3" placeholder="예: 알트코인, 비트코인, 미국주식, 경제위기, 동기부여"></textarea>
+                        <div class="mini-note">
+                            검색어를 비우면 너무 넓게 잡혀서 품질이 떨어집니다. 보통은 키워드를 1개 이상 넣는 쪽이 좋습니다.
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="channelId">채널 ID (선택)</label>
+                        <input id="channelId" type="text" placeholder="예: UCxxxxxxxx">
+                    </div>
+                    <div>
+                        <label for="order">정렬</label>
+                        <select id="order">
+                            <option value="viewCount">조회수 높은 순</option>
+                            <option value="date">최신순</option>
+                            <option value="relevance">관련도순</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="regionCode">국가 코드</label>
+                        <input id="regionCode" type="text" maxlength="2" placeholder="KR">
+                    </div>
+                    <div>
+                        <label for="language">언어 코드</label>
+                        <input id="language" type="text" placeholder="ko">
+                    </div>
+
+                    <div>
+                        <label for="minViews">최소 조회수</label>
+                        <input id="minViews" type="number" min="0" step="1000" value="1000000">
+                    </div>
+                    <div>
+                        <label for="maxSeconds">최대 길이(초)</label>
+                        <input id="maxSeconds" type="number" min="1" max="240" value="60">
+                        <div class="mini-note">공식 API의 <span class="mono">videoDuration=short</span>는 4분 미만이라서, 여기서 한 번 더 좁힙니다.</div>
+                    </div>
+
+                    <div>
+                        <label for="daysBack">최근 며칠 이내</label>
+                        <input id="daysBack" type="number" min="0" max="3650" value="30">
+                        <div class="mini-note">0이면 날짜 제한 없이 검색합니다.</div>
+                    </div>
+                    <div>
+                        <label for="pageCount">검색 페이지 수</label>
+                        <input id="pageCount" type="number" min="1" max="10" value="2">
+                        <div class="mini-note">1페이지는 최대 50개입니다.</div>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <strong>쿼터 계산 예시</strong><br>
+                    검색 1페이지 = <span class="mono">search.list 100 units</span><br>
+                    상세 조회 50개 = <span class="mono">videos.list 1 unit</span><br>
+                    즉 보통 <strong>2페이지 검색 + 상세 100개 조회</strong>면 대략 <strong>202 units</strong> 정도라서,
+                    공식 기본 일일 한도 <strong>10,000 units</strong> 안에서 개인용은 충분한 편입니다.
+                </div>
+
+                <div class="action-row">
+                    <button class="btn btn-primary" id="searchBtn">고조회수 쇼츠 찾기</button>
+                    <button class="btn btn-secondary" id="copyIdsBtn">결과 ID 복사</button>
+                    <button class="btn btn-secondary" id="copyShortsBtn">결과 Shorts 링크 복사</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h2>현재 상태</h2>
+                <div class="status-box">
+                    <p class="status-line" id="statusText">아직 검색 전입니다.</p>
+                    <div class="pill-row" id="statusPills">
+                        <span class="pill">공식 API 사용</span>
+                        <span class="pill">짧은 영상만 우선 검색</span>
+                        <span class="pill">조회수 / 초 길이 재필터링</span>
+                    </div>
+                </div>
+
+                <h3>이번 실행 요약</h3>
+                <div class="summary-box" id="runSummary">
+                    API 키를 넣고 검색어를 적은 다음 <strong>고조회수 쇼츠 찾기</strong>를 누르세요.
+                </div>
+
+                <h3 style="margin-top:16px;">사용 팁</h3>
+                <div class="summary-box">
+                    1. 키워드는 너무 넓게 잡지 말고 주제별로 좁혀서 보세요.<br>
+                    2. <strong>최소 조회수</strong>를 100만, 300만, 500만 식으로 바꿔보세요.<br>
+                    3. <strong>최근 며칠</strong>을 7일 / 30일 / 90일로 바꿔보면 느낌이 많이 달라집니다.<br>
+                    4. 결과는 <strong>공식 Shorts 판정값</strong>이 아니라 <strong>짧은 영상 + 60초 이하</strong> 기준의 실전용 근사치입니다.
+                </div>
+            </section>
+        </div>
+
+        <section class="panel">
+            <div class="results-head">
+                <h2 style="margin:0;">검색 결과</h2>
+                <div class="results-meta" id="resultsMeta">결과 0개</div>
+            </div>
+            <div id="resultsWrap" class="empty-box">
+                여기에서 고조회수 Shorts 후보를 보게 됩니다.
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "yt_shorts_api_finder_v1";
+        const els = {
+            apiKey: document.getElementById("apiKey"),
+            query: document.getElementById("query"),
+            channelId: document.getElementById("channelId"),
+            order: document.getElementById("order"),
+            regionCode: document.getElementById("regionCode"),
+            language: document.getElementById("language"),
+            minViews: document.getElementById("minViews"),
+            maxSeconds: document.getElementById("maxSeconds"),
+            daysBack: document.getElementById("daysBack"),
+            pageCount: document.getElementById("pageCount"),
+            searchBtn: document.getElementById("searchBtn"),
+            saveKeyBtn: document.getElementById("saveKeyBtn"),
+            clearKeyBtn: document.getElementById("clearKeyBtn"),
+            statusText: document.getElementById("statusText"),
+            statusPills: document.getElementById("statusPills"),
+            runSummary: document.getElementById("runSummary"),
+            resultsWrap: document.getElementById("resultsWrap"),
+            resultsMeta: document.getElementById("resultsMeta"),
+            copyIdsBtn: document.getElementById("copyIdsBtn"),
+            copyShortsBtn: document.getElementById("copyShortsBtn")
+        };
+
+        let lastResults = [];
+
+        function fmtNumber(value) {
+            return new Intl.NumberFormat("ko-KR").format(Number(value || 0));
+        }
+
+        function escapeHtml(text) {
+            return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function saveSettings() {
+            const payload = {
+                apiKey: els.apiKey.value.trim(),
+                query: els.query.value.trim(),
+                channelId: els.channelId.value.trim(),
+                order: els.order.value,
+                regionCode: els.regionCode.value.trim().toUpperCase(),
+                language: els.language.value.trim(),
+                minViews: els.minViews.value,
+                maxSeconds: els.maxSeconds.value,
+                daysBack: els.daysBack.value,
+                pageCount: els.pageCount.value
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        }
+
+        function loadSettings() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) {
+                els.regionCode.value = "KR";
+                els.language.value = "ko";
+                return;
+            }
+            try {
+                const data = JSON.parse(raw);
+                els.apiKey.value = data.apiKey || "";
+                els.query.value = data.query || "";
+                els.channelId.value = data.channelId || "";
+                els.order.value = data.order || "viewCount";
+                els.regionCode.value = data.regionCode || "KR";
+                els.language.value = data.language || "ko";
+                els.minViews.value = data.minViews || "1000000";
+                els.maxSeconds.value = data.maxSeconds || "60";
+                els.daysBack.value = data.daysBack || "30";
+                els.pageCount.value = data.pageCount || "2";
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function setStatus(text, pills = []) {
+            els.statusText.textContent = text;
+            if (!pills.length) {
+                return;
+            }
+            els.statusPills.innerHTML = pills.map((pill) => `<span class="pill">${escapeHtml(pill)}</span>`).join("");
+        }
+
+        function parseISODurationToSeconds(iso) {
+            if (!iso) return 0;
+            const match = iso.match(/P(?:\d+D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            if (!match) return 0;
+            const hours = Number(match[1] || 0);
+            const minutes = Number(match[2] || 0);
+            const seconds = Number(match[3] || 0);
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        function formatSeconds(totalSeconds) {
+            const seconds = Number(totalSeconds || 0);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            if (hours > 0) {
+                return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+            }
+            return `${minutes}:${String(secs).padStart(2, "0")}`;
+        }
+
+        function chunk(array, size) {
+            const chunks = [];
+            for (let i = 0; i < array.length; i += size) {
+                chunks.push(array.slice(i, i + size));
+            }
+            return chunks;
+        }
+
+        function toShortsUrl(videoId) {
+            return `https://www.youtube.com/shorts/${videoId}`;
+        }
+
+        function toWatchUrl(videoId) {
+            return `https://www.youtube.com/watch?v=${videoId}`;
+        }
+
+        function buildPublishedAfter(daysBack) {
+            const days = Number(daysBack || 0);
+            if (!days) return "";
+            const date = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+            return date.toISOString();
+        }
+
+        async function fetchJson(url) {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (!response.ok || data.error) {
+                const message = data?.error?.message || `HTTP ${response.status}`;
+                throw new Error(message);
+            }
+            return data;
+        }
+
+        async function searchYouTube() {
+            const apiKey = els.apiKey.value.trim();
+            const query = els.query.value.trim();
+            const channelId = els.channelId.value.trim();
+            const order = els.order.value;
+            const regionCode = els.regionCode.value.trim().toUpperCase();
+            const language = els.language.value.trim();
+            const minViews = Number(els.minViews.value || 0);
+            const maxSeconds = Number(els.maxSeconds.value || 60);
+            const pageCount = Math.min(10, Math.max(1, Number(els.pageCount.value || 1)));
+            const publishedAfter = buildPublishedAfter(els.daysBack.value);
+
+            if (!apiKey) {
+                alert("API 키를 먼저 넣어주세요.");
+                return;
+            }
+            if (!query && !channelId) {
+                alert("검색어 또는 채널 ID 중 하나는 넣어주세요.");
+                return;
+            }
+
+            saveSettings();
+            els.searchBtn.disabled = true;
+            els.resultsWrap.className = "";
+            els.resultsWrap.innerHTML = '<div class="empty-box">검색 중입니다. 잠시만 기다려주세요...</div>';
+            els.resultsMeta.textContent = "검색 중...";
+            setStatus("공식 YouTube API로 검색 중입니다...", [
+                `정렬: ${order}`,
+                `최소 조회수: ${fmtNumber(minViews)}`,
+                `최대 길이: ${maxSeconds}초`,
+                `페이지 수: ${pageCount}`
+            ]);
+
+            try {
+                let nextPageToken = "";
+                const uniqueIds = new Set();
+                let fetchedPages = 0;
+
+                for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+                    const params = new URLSearchParams({
+                        key: apiKey,
+                        part: "snippet",
+                        type: "video",
+                        maxResults: "50",
+                        order,
+                        videoDuration: "short"
+                    });
+
+                    if (query) params.set("q", query);
+                    if (channelId) params.set("channelId", channelId);
+                    if (regionCode) params.set("regionCode", regionCode);
+                    if (language) params.set("relevanceLanguage", language);
+                    if (publishedAfter) params.set("publishedAfter", publishedAfter);
+                    if (nextPageToken) params.set("pageToken", nextPageToken);
+
+                    const searchUrl = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
+                    const searchData = await fetchJson(searchUrl);
+                    fetchedPages += 1;
+
+                    (searchData.items || []).forEach((item) => {
+                        const videoId = item?.id?.videoId;
+                        if (videoId) uniqueIds.add(videoId);
+                    });
+
+                    nextPageToken = searchData.nextPageToken || "";
+                    if (!nextPageToken) break;
+                }
+
+                const allIds = Array.from(uniqueIds);
+                const idChunks = chunk(allIds, 50);
+                let detailCalls = 0;
+                const detailedItems = [];
+
+                for (const idChunk of idChunks) {
+                    const detailParams = new URLSearchParams({
+                        key: apiKey,
+                        part: "snippet,contentDetails,statistics",
+                        id: idChunk.join(",")
+                    });
+                    const detailUrl = `https://www.googleapis.com/youtube/v3/videos?${detailParams.toString()}`;
+                    const detailData = await fetchJson(detailUrl);
+                    detailCalls += 1;
+                    detailedItems.push(...(detailData.items || []));
+                }
+
+                const filtered = detailedItems
+                    .map((item) => {
+                        const seconds = parseISODurationToSeconds(item.contentDetails?.duration);
+                        const viewCount = Number(item.statistics?.viewCount || 0);
+                        return {
+                            videoId: item.id,
+                            title: item.snippet?.title || "",
+                            channelTitle: item.snippet?.channelTitle || "",
+                            publishedAt: item.snippet?.publishedAt || "",
+                            thumbnail: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || "",
+                            description: item.snippet?.description || "",
+                            durationSeconds: seconds,
+                            durationText: formatSeconds(seconds),
+                            viewCount,
+                            likeCount: Number(item.statistics?.likeCount || 0),
+                            commentCount: Number(item.statistics?.commentCount || 0),
+                            shortsUrl: toShortsUrl(item.id),
+                            watchUrl: toWatchUrl(item.id)
+                        };
+                    })
+                    .filter((item) => item.durationSeconds > 0 && item.durationSeconds <= maxSeconds)
+                    .filter((item) => item.viewCount >= minViews)
+                    .sort((a, b) => b.viewCount - a.viewCount);
+
+                lastResults = filtered;
+                renderResults(filtered);
+
+                const estimatedUnits = fetchedPages * 100 + detailCalls;
+                els.runSummary.innerHTML = `
+                    검색 페이지 수: <strong>${fetchedPages}</strong><br>
+                    후보 영상 수: <strong>${fmtNumber(allIds.length)}</strong><br>
+                    상세 조회 호출 수: <strong>${detailCalls}</strong><br>
+                    이번 실행 대략 사용 쿼터: <strong>${fmtNumber(estimatedUnits)} units</strong><br>
+                    최종 조건 통과 개수: <strong>${fmtNumber(filtered.length)}개</strong>
+                `;
+                setStatus("검색이 끝났습니다.", [
+                    `최종 결과 ${fmtNumber(filtered.length)}개`,
+                    `후보 ${fmtNumber(allIds.length)}개`,
+                    `대략 ${fmtNumber(estimatedUnits)} units 사용`
+                ]);
+            } catch (error) {
+                console.error(error);
+                lastResults = [];
+                els.resultsWrap.className = "";
+                els.resultsWrap.innerHTML = `<div class="empty-box">오류가 났습니다.<br><br><strong>${escapeHtml(error.message)}</strong></div>`;
+                els.resultsMeta.textContent = "결과 0개";
+                els.runSummary.innerHTML = `오류 내용: <strong>${escapeHtml(error.message)}</strong><br>API 키 제한 방식이나 쿼터, 채널/검색 조건을 다시 확인해 주세요.`;
+                setStatus("검색 중 오류가 났습니다.", ["API 키", "쿼터", "제한 설정", "검색 조건 확인"]);
+            } finally {
+                els.searchBtn.disabled = false;
+            }
+        }
+
+        function renderResults(items) {
+            els.resultsMeta.textContent = `결과 ${fmtNumber(items.length)}개`;
+
+            if (!items.length) {
+                els.resultsWrap.className = "";
+                els.resultsWrap.innerHTML = '<div class="empty-box">조건에 맞는 Shorts 후보가 없습니다. 검색어나 최소 조회수, 기간, 최대 길이를 조금 완화해 보세요.</div>';
+                return;
+            }
+
+            els.resultsWrap.className = "results-grid";
+            els.resultsWrap.innerHTML = items.map((item) => {
+                const published = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString("ko-KR") : "-";
+                const description = item.description ? escapeHtml(item.description.slice(0, 130)) : "설명 없음";
+                return `
+                    <article class="result-card">
+                        <div class="thumb-wrap">
+                            <img src="${escapeHtml(item.thumbnail)}" alt="${escapeHtml(item.title)}">
+                            <div class="thumb-badge">${escapeHtml(item.durationText)}</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-title">${escapeHtml(item.title)}</div>
+                            <div class="card-sub">${escapeHtml(item.channelTitle)}<br>${description}${item.description.length > 130 ? "..." : ""}</div>
+                            <div class="meta-grid">
+                                <div class="meta-item">
+                                    <strong>조회수</strong>
+                                    ${fmtNumber(item.viewCount)}
+                                </div>
+                                <div class="meta-item">
+                                    <strong>좋아요</strong>
+                                    ${fmtNumber(item.likeCount)}
+                                </div>
+                                <div class="meta-item">
+                                    <strong>댓글</strong>
+                                    ${fmtNumber(item.commentCount)}
+                                </div>
+                                <div class="meta-item">
+                                    <strong>업로드일</strong>
+                                    ${escapeHtml(published)}
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <a class="btn btn-primary" href="${escapeHtml(item.shortsUrl)}" target="_blank" rel="noopener noreferrer">Shorts 열기</a>
+                                <a class="btn btn-secondary" href="${escapeHtml(item.watchUrl)}" target="_blank" rel="noopener noreferrer">watch 열기</a>
+                                <button class="btn btn-secondary" data-copy="${escapeHtml(item.videoId)}">ID 복사</button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+
+            els.resultsWrap.querySelectorAll("[data-copy]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const value = button.getAttribute("data-copy") || "";
+                    await navigator.clipboard.writeText(value);
+                    button.textContent = "복사됨";
+                    setTimeout(() => {
+                        button.textContent = "ID 복사";
+                    }, 1200);
+                });
+            });
+        }
+
+        async function copyResultIds() {
+            if (!lastResults.length) {
+                alert("먼저 검색 결과를 만드세요.");
+                return;
+            }
+            const payload = lastResults.map((item) => item.videoId).join(",");
+            await navigator.clipboard.writeText(payload);
+            alert("영상 ID를 복사했습니다.");
+        }
+
+        async function copyResultShortsUrls() {
+            if (!lastResults.length) {
+                alert("먼저 검색 결과를 만드세요.");
+                return;
+            }
+            const payload = lastResults.map((item) => item.shortsUrl).join("\n");
+            await navigator.clipboard.writeText(payload);
+            alert("Shorts 링크를 복사했습니다.");
+        }
+
+        els.searchBtn.addEventListener("click", searchYouTube);
+        els.saveKeyBtn.addEventListener("click", () => {
+            saveSettings();
+            alert("API 키와 설정을 저장했습니다.");
+        });
+        els.clearKeyBtn.addEventListener("click", () => {
+            localStorage.removeItem(STORAGE_KEY);
+            els.apiKey.value = "";
+            els.query.value = "";
+            els.channelId.value = "";
+            els.order.value = "viewCount";
+            els.regionCode.value = "KR";
+            els.language.value = "ko";
+            els.minViews.value = "1000000";
+            els.maxSeconds.value = "60";
+            els.daysBack.value = "30";
+            els.pageCount.value = "2";
+            alert("저장된 API 키와 설정을 지웠습니다.");
+        });
+        els.copyIdsBtn.addEventListener("click", copyResultIds);
+        els.copyShortsBtn.addEventListener("click", copyResultShortsUrls);
+
+        [
+            els.apiKey, els.query, els.channelId, els.order, els.regionCode,
+            els.language, els.minViews, els.maxSeconds, els.daysBack, els.pageCount
+        ].forEach((element) => {
+            element.addEventListener("change", saveSettings);
+        });
+
+        loadSettings();
+    </script>
+</body>
+</html>
