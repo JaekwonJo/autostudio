@@ -76,6 +76,27 @@
             margin: 0 0 10px;
             font-size: 17px;
         }
+        .collapse-box {
+            border: 1px solid #d9e2ec;
+            border-radius: 12px;
+            background: #f8fafc;
+            padding: 10px 12px;
+        }
+        .collapse-box summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #1f3a5f;
+            list-style: none;
+        }
+        .collapse-box summary::-webkit-details-marker {
+            display: none;
+        }
+        .collapse-box[open] {
+            background: #fff;
+        }
+        .collapse-body {
+            margin-top: 12px;
+        }
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -201,8 +222,11 @@
         }
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .results-grid.mode-video {
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
         }
         .result-card {
             overflow: hidden;
@@ -211,8 +235,11 @@
         }
         .thumb-wrap {
             position: relative;
-            aspect-ratio: 9 / 16;
+            aspect-ratio: 16 / 9;
             background: #e9ecef;
+        }
+        .results-grid.mode-shorts .thumb-wrap {
+            aspect-ratio: 9 / 16;
         }
         .thumb-wrap img {
             width: 100%;
@@ -295,6 +322,11 @@
             .form-grid {
                 grid-template-columns: 1fr;
             }
+            .results-grid,
+            .results-grid.mode-video,
+            .results-grid.mode-shorts {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
             body {
                 padding: 14px;
             }
@@ -325,17 +357,22 @@
                 <h2>설정</h2>
                 <div class="form-grid">
                     <div class="full">
-                        <label for="apiKey">YouTube API Key</label>
-                        <input id="apiKey" type="password" placeholder="여기에 API 키를 넣으세요">
-                        <div class="mini-note">
-                            이 HTML은 API 키를 브라우저 <span class="mono">localStorage</span>에만 저장합니다.
-                            <br>주의: <span class="mono">file://</span> 로 여는 로컬 HTML은 HTTP referrer 제한 키가 잘 안 맞을 수 있습니다. 개인용이면
-                            <strong>API 제한만 YouTube Data API로 걸고</strong> 테스트하는 쪽이 가장 단순합니다.
-                        </div>
-                        <div class="action-row">
-                            <button class="btn btn-secondary" id="saveKeyBtn">키 저장</button>
-                            <button class="btn btn-danger" id="clearKeyBtn">키 삭제</button>
-                        </div>
+                        <details class="collapse-box" id="apiKeyDetails">
+                            <summary>🔐 API 키 설정 펼치기</summary>
+                            <div class="collapse-body">
+                                <label for="apiKey">YouTube API Key</label>
+                                <input id="apiKey" type="password" placeholder="여기에 API 키를 넣으세요">
+                                <div class="mini-note">
+                                    이 HTML은 API 키를 브라우저 <span class="mono">localStorage</span>에만 저장합니다.
+                                    <br>주의: <span class="mono">file://</span> 로 여는 로컬 HTML은 HTTP referrer 제한 키가 잘 안 맞을 수 있습니다. 개인용이면
+                                    <strong>API 제한만 YouTube Data API로 걸고</strong> 테스트하는 쪽이 가장 단순합니다.
+                                </div>
+                                <div class="action-row">
+                                    <button class="btn btn-secondary" id="saveKeyBtn">키 저장</button>
+                                    <button class="btn btn-danger" id="clearKeyBtn">키 삭제</button>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <div>
@@ -344,11 +381,21 @@
                             <option value="shorts">쇼츠 발굴</option>
                             <option value="today_hot">오늘의 고조회수 영상</option>
                             <option value="period_hot">최근 N일 고조회수 영상</option>
+                            <option value="trending_now">전체 핫영상(트렌딩)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="mediaTypeFilter">영상 길이 분류</label>
+                        <select id="mediaTypeFilter">
+                            <option value="all">전체</option>
+                            <option value="shorts_only">쇼츠만</option>
+                            <option value="longform_only">롱폼만</option>
                         </select>
                     </div>
                     <div>
                         <label for="topicPreset">주제 프리셋</label>
                         <select id="topicPreset">
+                            <option value="all_topics">전체 / 주제 없음</option>
                             <option value="custom">직접 입력</option>
                             <option value="economy">경제 / 재테크</option>
                             <option value="history">역사</option>
@@ -357,6 +404,10 @@
                             <option value="ai">AI / 자동화</option>
                             <option value="current_affairs">시사 / 뉴스</option>
                             <option value="self_improvement">자기계발</option>
+                            <option value="sports">스포츠</option>
+                            <option value="health">건강</option>
+                            <option value="real_estate">부동산</option>
+                            <option value="entertainment">엔터테인먼트</option>
                         </select>
                     </div>
 
@@ -397,9 +448,36 @@
                         <div class="mini-note">예: 100000, 200000, 500000, 1000000</div>
                     </div>
                     <div>
+                        <label for="minViewsPreset">최소 조회수 빠른 선택</label>
+                        <select id="minViewsPreset">
+                            <option value="custom">직접 입력</option>
+                            <option value="50000">5만 이상</option>
+                            <option value="100000">10만 이상</option>
+                            <option value="200000">20만 이상</option>
+                            <option value="300000">30만 이상</option>
+                            <option value="500000">50만 이상</option>
+                            <option value="1000000">100만 이상</option>
+                            <option value="3000000">300만 이상</option>
+                        </select>
+                    </div>
+                    <div>
                         <label for="maxSeconds">최대 길이(초)</label>
-                        <input id="maxSeconds" type="number" min="1" max="240" value="60">
+                        <input id="maxSeconds" type="number" min="1" max="43200" value="60">
                         <div class="mini-note" id="maxSecondsHint">쇼츠 모드에서는 <span class="mono">videoDuration=short</span>에 더해 여기서 한 번 더 좁힙니다.</div>
+                    </div>
+                    <div>
+                        <label for="durationPreset">최대 길이 빠른 선택</label>
+                        <select id="durationPreset">
+                            <option value="60">60초 이하</option>
+                            <option value="180">3분 이하</option>
+                            <option value="600">10분 이하</option>
+                            <option value="1800">30분 이하</option>
+                            <option value="3600">1시간 이하</option>
+                            <option value="7200">2시간 이하</option>
+                            <option value="14400">4시간 이하</option>
+                            <option value="43200">12시간 이하</option>
+                            <option value="custom">직접 입력</option>
+                        </select>
                     </div>
 
                     <div>
@@ -459,7 +537,17 @@
         <section class="panel">
             <div class="results-head">
                 <h2 style="margin:0;">검색 결과</h2>
-                <div class="results-meta" id="resultsMeta">결과 0개</div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <select id="resultSort" style="width: 180px;">
+                        <option value="viewCount_desc">결과 정렬: 조회수순</option>
+                        <option value="publishedAt_desc">결과 정렬: 최신순</option>
+                        <option value="likeCount_desc">결과 정렬: 좋아요순</option>
+                        <option value="commentCount_desc">결과 정렬: 댓글순</option>
+                        <option value="durationSeconds_asc">결과 정렬: 짧은순</option>
+                        <option value="durationSeconds_desc">결과 정렬: 긴순</option>
+                    </select>
+                    <div class="results-meta" id="resultsMeta">결과 0개</div>
+                </div>
             </div>
             <div id="resultsWrap" class="empty-box">
                 여기에서 쇼츠 또는 주제별 고조회수 영상 후보를 보게 됩니다.
@@ -470,27 +558,36 @@
     <script>
         const STORAGE_KEY = "yt_hot_topic_radar_v2";
         const TOPIC_PRESETS = {
-            custom: { label: "직접 입력", keywords: "" },
-            economy: { label: "경제 / 재테크", keywords: "경제 재테크 투자 주식 비트코인 환율 금리" },
-            history: { label: "역사", keywords: "역사 세계사 한국사 조선 근현대사 전쟁 문명" },
-            education: { label: "교육 / 공부", keywords: "교육 공부 학습 강의 수업 입시 개념 설명" },
-            science: { label: "과학", keywords: "과학 물리 화학 생물 우주 자연과학 실험" },
-            ai: { label: "AI / 자동화", keywords: "AI 인공지능 ChatGPT 자동화 생성형AI 프롬프트" },
-            current_affairs: { label: "시사 / 뉴스", keywords: "시사 뉴스 국제정세 정치 사회 경제 이슈" },
-            self_improvement: { label: "자기계발", keywords: "자기계발 동기부여 습관 성공 생산성 마인드셋" }
+            all_topics: { label: "전체 / 주제 없음", keywords: "", tokens: [] },
+            custom: { label: "직접 입력", keywords: "", tokens: [] },
+            economy: { label: "경제 / 재테크", keywords: "경제|재테크|주식|투자|비트코인|환율|금리", tokens: ["경제", "재테크", "주식", "투자", "비트코인", "환율", "금리"] },
+            history: { label: "역사", keywords: "역사|한국사|세계사|조선|근현대사|전쟁사", tokens: ["역사", "한국사", "세계사", "조선", "근현대사", "전쟁사"] },
+            education: { label: "교육 / 공부", keywords: "교육|공부|강의|수업|입시|개념설명", tokens: ["교육", "공부", "강의", "수업", "입시", "개념"] },
+            science: { label: "과학", keywords: "과학|우주|물리|화학|생물|실험", tokens: ["과학", "우주", "물리", "화학", "생물", "실험"] },
+            ai: { label: "AI / 자동화", keywords: "AI|인공지능|ChatGPT|자동화|생성형AI|프롬프트", tokens: ["AI", "인공지능", "ChatGPT", "자동화", "생성형AI", "프롬프트"] },
+            current_affairs: { label: "시사 / 뉴스", keywords: "시사|뉴스|국제정세|정치|사회|이슈", tokens: ["시사", "뉴스", "국제정세", "정치", "사회", "이슈"] },
+            self_improvement: { label: "자기계발", keywords: "자기계발|동기부여|습관|성공|생산성", tokens: ["자기계발", "동기부여", "습관", "성공", "생산성"] },
+            sports: { label: "스포츠", keywords: "스포츠|축구|야구|농구|격투기", tokens: ["스포츠", "축구", "야구", "농구", "격투기"] },
+            health: { label: "건강", keywords: "건강|다이어트|운동|영양|헬스", tokens: ["건강", "다이어트", "운동", "영양", "헬스"] },
+            real_estate: { label: "부동산", keywords: "부동산|아파트|청약|전세|매매", tokens: ["부동산", "아파트", "청약", "전세", "매매"] },
+            entertainment: { label: "엔터테인먼트", keywords: "예능|연예|케이팝|영화|드라마", tokens: ["예능", "연예", "케이팝", "영화", "드라마"] }
         };
         const els = {
+            apiKeyDetails: document.getElementById("apiKeyDetails"),
             apiKey: document.getElementById("apiKey"),
             searchMode: document.getElementById("searchMode"),
             topicPreset: document.getElementById("topicPreset"),
             topicPresetHint: document.getElementById("topicPresetHint"),
+            mediaTypeFilter: document.getElementById("mediaTypeFilter"),
             query: document.getElementById("query"),
             channelId: document.getElementById("channelId"),
             order: document.getElementById("order"),
             regionCode: document.getElementById("regionCode"),
             language: document.getElementById("language"),
             minViews: document.getElementById("minViews"),
+            minViewsPreset: document.getElementById("minViewsPreset"),
             maxSeconds: document.getElementById("maxSeconds"),
+            durationPreset: document.getElementById("durationPreset"),
             maxSecondsHint: document.getElementById("maxSecondsHint"),
             daysBack: document.getElementById("daysBack"),
             daysBackHint: document.getElementById("daysBackHint"),
@@ -503,6 +600,7 @@
             runSummary: document.getElementById("runSummary"),
             resultsWrap: document.getElementById("resultsWrap"),
             resultsMeta: document.getElementById("resultsMeta"),
+            resultSort: document.getElementById("resultSort"),
             copyIdsBtn: document.getElementById("copyIdsBtn"),
             copyShortsBtn: document.getElementById("copyShortsBtn")
         };
@@ -526,15 +624,19 @@
                 apiKey: els.apiKey.value.trim(),
                 searchMode: els.searchMode.value,
                 topicPreset: els.topicPreset.value,
+                mediaTypeFilter: els.mediaTypeFilter.value,
                 query: els.query.value.trim(),
                 channelId: els.channelId.value.trim(),
                 order: els.order.value,
                 regionCode: els.regionCode.value.trim().toUpperCase(),
                 language: els.language.value.trim(),
                 minViews: els.minViews.value,
+                minViewsPreset: els.minViewsPreset.value,
                 maxSeconds: els.maxSeconds.value,
+                durationPreset: els.durationPreset.value,
                 daysBack: els.daysBack.value,
-                pageCount: els.pageCount.value
+                pageCount: els.pageCount.value,
+                resultSort: els.resultSort.value
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
         }
@@ -551,18 +653,36 @@
                 els.apiKey.value = data.apiKey || "";
                 els.searchMode.value = data.searchMode || "shorts";
                 els.topicPreset.value = data.topicPreset || "custom";
+                els.mediaTypeFilter.value = data.mediaTypeFilter || "all";
                 els.query.value = data.query || "";
                 els.channelId.value = data.channelId || "";
                 els.order.value = data.order || "viewCount";
                 els.regionCode.value = data.regionCode || "KR";
                 els.language.value = data.language || "ko";
                 els.minViews.value = data.minViews || "1000000";
+                els.minViewsPreset.value = data.minViewsPreset || "1000000";
                 els.maxSeconds.value = data.maxSeconds || "60";
+                els.durationPreset.value = data.durationPreset || "60";
                 els.daysBack.value = data.daysBack || "30";
                 els.pageCount.value = data.pageCount || "2";
+                els.resultSort.value = data.resultSort || "viewCount_desc";
             } catch (error) {
                 console.error(error);
             }
+        }
+
+        function getModeLabel(mode) {
+            if (mode === "shorts") return "쇼츠 발굴";
+            if (mode === "today_hot") return "오늘의 고조회수 영상";
+            if (mode === "period_hot") return "최근 N일 고조회수 영상";
+            if (mode === "trending_now") return "전체 핫영상(트렌딩)";
+            return "검색";
+        }
+
+        function getMediaFilterLabel(value) {
+            if (value === "shorts_only") return "쇼츠만";
+            if (value === "longform_only") return "롱폼만";
+            return "전체";
         }
 
         function getTopicPreset() {
@@ -572,16 +692,50 @@
         function buildFinalQuery() {
             const preset = getTopicPreset();
             const query = els.query.value.trim();
-            return [preset.keywords, query].filter(Boolean).join(" ").trim();
+            if (!preset.keywords) {
+                return query;
+            }
+            if (!query) {
+                return preset.keywords;
+            }
+            return `${query} ${preset.keywords}`;
+        }
+
+        function buildLocalKeywordTokens() {
+            const preset = getTopicPreset();
+            const queryTokens = String(els.query.value || "")
+                .split(/[,\n]/)
+                .map((token) => token.trim())
+                .filter(Boolean);
+            return [...preset.tokens, ...queryTokens];
+        }
+
+        function matchesLocalTopic(item, tokens) {
+            if (!tokens.length) {
+                return true;
+            }
+            const haystack = `${item.snippet?.title || ""} ${(item.snippet?.description || "")}`.toLowerCase();
+            return tokens.some((token) => haystack.includes(String(token).toLowerCase()));
+        }
+
+        function formatDurationPresetHint(seconds) {
+            const value = Number(seconds || 0);
+            if (!value) return "";
+            if (value < 60) return `${value}초`;
+            if (value % 3600 === 0) return `${value / 3600}시간`;
+            if (value % 60 === 0) return `${value / 60}분`;
+            return formatSeconds(value);
         }
 
         function refreshTopicPresetHint() {
             const preset = getTopicPreset();
             if (!preset.keywords) {
-                els.topicPresetHint.textContent = "현재는 직접 입력 모드입니다.";
+                els.topicPresetHint.textContent = els.topicPreset.value === "all_topics"
+                    ? "주제 프리셋 없이 전체 기준으로 찾습니다."
+                    : "현재는 직접 입력 모드입니다.";
                 return;
             }
-            els.topicPresetHint.textContent = `프리셋 키워드: ${preset.keywords}`;
+            els.topicPresetHint.textContent = `프리셋 묶음 키워드: ${preset.keywords}`;
         }
 
         function refreshModeUi() {
@@ -591,11 +745,19 @@
                 els.copyShortsBtn.textContent = "결과 Shorts 링크 복사";
                 els.maxSecondsHint.innerHTML = '쇼츠 모드에서는 <span class="mono">videoDuration=short</span>에 더해 여기서 한 번 더 좁힙니다.';
                 els.daysBackHint.textContent = "0이면 날짜 제한 없이 검색합니다.";
+                if (els.mediaTypeFilter.value === "all") {
+                    els.mediaTypeFilter.value = "shorts_only";
+                }
             } else if (mode === "today_hot") {
                 els.searchBtn.textContent = "오늘의 고조회수 영상 찾기";
                 els.copyShortsBtn.textContent = "결과 영상 링크 복사";
                 els.maxSecondsHint.textContent = "긴 영상도 찾을 수 있습니다. 너무 길면 여기서 잘라내세요.";
                 els.daysBackHint.textContent = "이 모드에서는 입력값과 상관없이 오늘 0시 이후 업로드 영상만 봅니다.";
+            } else if (mode === "trending_now") {
+                els.searchBtn.textContent = "전체 핫영상(트렌딩) 찾기";
+                els.copyShortsBtn.textContent = "결과 영상 링크 복사";
+                els.maxSecondsHint.textContent = "트렌딩 목록에서도 너무 긴 영상은 여기서 잘라낼 수 있습니다.";
+                els.daysBackHint.textContent = "이 모드에서는 최근 며칠 값 대신 YouTube 인기 차트를 직접 봅니다.";
             } else {
                 els.searchBtn.textContent = "최근 N일 고조회수 영상 찾기";
                 els.copyShortsBtn.textContent = "결과 영상 링크 복사";
@@ -603,6 +765,37 @@
                 els.daysBackHint.textContent = "예: 7일, 30일, 90일. 0이면 날짜 제한 없이 봅니다.";
             }
             refreshTopicPresetHint();
+        }
+
+        function applyMinViewsPreset() {
+            if (els.minViewsPreset.value !== "custom") {
+                els.minViews.value = els.minViewsPreset.value;
+            }
+        }
+
+        function applyDurationPreset() {
+            if (els.durationPreset.value !== "custom") {
+                els.maxSeconds.value = els.durationPreset.value;
+            }
+        }
+
+        function sortResults(items) {
+            const sorted = [...items];
+            const mode = els.resultSort.value;
+            if (mode === "publishedAt_desc") {
+                sorted.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+            } else if (mode === "likeCount_desc") {
+                sorted.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
+            } else if (mode === "commentCount_desc") {
+                sorted.sort((a, b) => (b.commentCount || 0) - (a.commentCount || 0));
+            } else if (mode === "durationSeconds_asc") {
+                sorted.sort((a, b) => (a.durationSeconds || 0) - (b.durationSeconds || 0));
+            } else if (mode === "durationSeconds_desc") {
+                sorted.sort((a, b) => (b.durationSeconds || 0) - (a.durationSeconds || 0));
+            } else {
+                sorted.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+            }
+            return sorted;
         }
 
         function setStatus(text, pills = []) {
@@ -677,12 +870,14 @@
             const apiKey = els.apiKey.value.trim();
             const mode = els.searchMode.value;
             const query = buildFinalQuery();
+            const topicTokens = buildLocalKeywordTokens();
             const channelId = els.channelId.value.trim();
             const order = els.order.value;
             const regionCode = els.regionCode.value.trim().toUpperCase();
             const language = els.language.value.trim();
             const minViews = Number(els.minViews.value || 0);
             const maxSeconds = Number(els.maxSeconds.value || 60);
+            const mediaTypeFilter = els.mediaTypeFilter.value;
             const pageCount = Math.min(10, Math.max(1, Number(els.pageCount.value || 1)));
             const publishedAfter = mode === "today_hot" ? buildTodayStartIso() : buildPublishedAfter(els.daysBack.value);
             const topicLabel = getTopicPreset().label;
@@ -691,7 +886,7 @@
                 alert("API 키를 먼저 넣어주세요.");
                 return;
             }
-            if (!query && !channelId) {
+            if (mode !== "trending_now" && !query && !channelId) {
                 alert("검색어 또는 채널 ID 중 하나는 넣어주세요.");
                 return;
             }
@@ -702,8 +897,9 @@
             els.resultsWrap.innerHTML = '<div class="empty-box">검색 중입니다. 잠시만 기다려주세요...</div>';
             els.resultsMeta.textContent = "검색 중...";
             setStatus("공식 YouTube API로 검색 중입니다...", [
-                `모드: ${mode === "shorts" ? "쇼츠 발굴" : mode === "today_hot" ? "오늘의 고조회수 영상" : "최근 N일 고조회수 영상"}`,
+                `모드: ${getModeLabel(mode)}`,
                 `주제: ${topicLabel}`,
+                `분류: ${getMediaFilterLabel(mediaTypeFilter)}`,
                 `정렬: ${order}`,
                 `최소 조회수: ${fmtNumber(minViews)}`,
                 `최대 길이: ${maxSeconds}초`,
@@ -714,52 +910,73 @@
                 let nextPageToken = "";
                 const uniqueIds = new Set();
                 let fetchedPages = 0;
+                let detailedItems = [];
 
-                for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
-                    const params = new URLSearchParams({
-                        key: apiKey,
-                        part: "snippet",
-                        type: "video",
-                        maxResults: "50",
-                        order
-                    });
-
-                    if (query) params.set("q", query);
-                    if (channelId) params.set("channelId", channelId);
-                    if (regionCode) params.set("regionCode", regionCode);
-                    if (language) params.set("relevanceLanguage", language);
-                    if (publishedAfter) params.set("publishedAfter", publishedAfter);
-                    if (nextPageToken) params.set("pageToken", nextPageToken);
-                    if (mode === "shorts") params.set("videoDuration", "short");
-
-                    const searchUrl = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
-                    const searchData = await fetchJson(searchUrl);
-                    fetchedPages += 1;
-
-                    (searchData.items || []).forEach((item) => {
-                        const videoId = item?.id?.videoId;
-                        if (videoId) uniqueIds.add(videoId);
-                    });
-
-                    nextPageToken = searchData.nextPageToken || "";
-                    if (!nextPageToken) break;
-                }
-
-                const allIds = Array.from(uniqueIds);
-                const idChunks = chunk(allIds, 50);
                 let detailCalls = 0;
-                const detailedItems = [];
 
-                for (const idChunk of idChunks) {
-                    const detailParams = new URLSearchParams({
-                        key: apiKey,
-                        part: "snippet,contentDetails,statistics",
-                        id: idChunk.join(",")
-                    });
-                    const detailUrl = `https://www.googleapis.com/youtube/v3/videos?${detailParams.toString()}`;
-                    const detailData = await fetchJson(detailUrl);
-                    detailCalls += 1;
-                    detailedItems.push(...(detailData.items || []));
+                if (mode === "trending_now") {
+                    for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+                        const params = new URLSearchParams({
+                            key: apiKey,
+                            part: "snippet,contentDetails,statistics",
+                            chart: "mostPopular",
+                            maxResults: "50"
+                        });
+                        if (regionCode) params.set("regionCode", regionCode);
+                        if (nextPageToken) params.set("pageToken", nextPageToken);
+                        const videosUrl = `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`;
+                        const videosData = await fetchJson(videosUrl);
+                        fetchedPages += 1;
+                        detailCalls += 1;
+                        detailedItems.push(...(videosData.items || []));
+                        nextPageToken = videosData.nextPageToken || "";
+                        if (!nextPageToken) break;
+                    }
+                } else {
+                    for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+                        const params = new URLSearchParams({
+                            key: apiKey,
+                            part: "snippet",
+                            type: "video",
+                            maxResults: "50",
+                            order
+                        });
+
+                        if (query) params.set("q", query);
+                        if (channelId) params.set("channelId", channelId);
+                        if (regionCode) params.set("regionCode", regionCode);
+                        if (language) params.set("relevanceLanguage", language);
+                        if (publishedAfter) params.set("publishedAfter", publishedAfter);
+                        if (nextPageToken) params.set("pageToken", nextPageToken);
+                        if (mode === "shorts") params.set("videoDuration", "short");
+
+                        const searchUrl = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
+                        const searchData = await fetchJson(searchUrl);
+                        fetchedPages += 1;
+
+                        (searchData.items || []).forEach((item) => {
+                            const videoId = item?.id?.videoId;
+                            if (videoId) uniqueIds.add(videoId);
+                        });
+
+                        nextPageToken = searchData.nextPageToken || "";
+                        if (!nextPageToken) break;
+                    }
+
+                    const allIds = Array.from(uniqueIds);
+                    const idChunks = chunk(allIds, 50);
+
+                    for (const idChunk of idChunks) {
+                        const detailParams = new URLSearchParams({
+                            key: apiKey,
+                            part: "snippet,contentDetails,statistics",
+                            id: idChunk.join(",")
+                        });
+                        const detailUrl = `https://www.googleapis.com/youtube/v3/videos?${detailParams.toString()}`;
+                        const detailData = await fetchJson(detailUrl);
+                        detailCalls += 1;
+                        detailedItems.push(...(detailData.items || []));
+                    }
                 }
 
                 const filtered = detailedItems
@@ -783,28 +1000,36 @@
                             watchUrl: toWatchUrl(item.id)
                         };
                     })
+                    .filter((item) => matchesLocalTopic({ snippet: { title: item.title, description: item.description } }, topicTokens))
                     .filter((item) => item.durationSeconds > 0 && item.durationSeconds <= maxSeconds)
+                    .filter((item) => {
+                        if (mediaTypeFilter === "shorts_only") return item.isShortCandidate;
+                        if (mediaTypeFilter === "longform_only") return !item.isShortCandidate;
+                        return true;
+                    })
                     .filter((item) => item.viewCount >= minViews)
                     .sort((a, b) => b.viewCount - a.viewCount);
 
                 lastResults = filtered;
-                renderResults(filtered);
+                renderResults(sortResults(filtered));
 
                 const estimatedUnits = fetchedPages * 100 + detailCalls;
                 els.runSummary.innerHTML = `
-                    검색 모드: <strong>${mode === "shorts" ? "쇼츠 발굴" : mode === "today_hot" ? "오늘의 고조회수 영상" : "최근 N일 고조회수 영상"}</strong><br>
+                    검색 모드: <strong>${getModeLabel(mode)}</strong><br>
                     주제 프리셋: <strong>${topicLabel}</strong><br>
+                    영상 길이 분류: <strong>${getMediaFilterLabel(mediaTypeFilter)}</strong><br>
                     최종 검색어: <strong>${escapeHtml(query || "(없음)")}</strong><br>
                     검색 페이지 수: <strong>${fetchedPages}</strong><br>
-                    후보 영상 수: <strong>${fmtNumber(allIds.length)}</strong><br>
+                    후보 영상 수: <strong>${fmtNumber(mode === "trending_now" ? detailedItems.length : uniqueIds.size)}</strong><br>
                     상세 조회 호출 수: <strong>${detailCalls}</strong><br>
                     이번 실행 대략 사용 쿼터: <strong>${fmtNumber(estimatedUnits)} units</strong><br>
                     최종 조건 통과 개수: <strong>${fmtNumber(filtered.length)}개</strong>
                 `;
                 setStatus("검색이 끝났습니다.", [
                     `${topicLabel}`,
+                    `${getMediaFilterLabel(mediaTypeFilter)}`,
                     `최종 결과 ${fmtNumber(filtered.length)}개`,
-                    `후보 ${fmtNumber(allIds.length)}개`,
+                    `후보 ${fmtNumber(mode === "trending_now" ? detailedItems.length : uniqueIds.size)}개`,
                     `대략 ${fmtNumber(estimatedUnits)} units 사용`
                 ]);
             } catch (error) {
@@ -830,7 +1055,8 @@
                 return;
             }
 
-            els.resultsWrap.className = "results-grid";
+            const visualMode = (mode === "shorts" && els.mediaTypeFilter.value !== "longform_only") ? "mode-shorts" : "mode-video";
+            els.resultsWrap.className = `results-grid ${visualMode}`;
             els.resultsWrap.innerHTML = items.map((item) => {
                 const published = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString("ko-KR") : "-";
                 const description = item.description ? escapeHtml(item.description.slice(0, 130)) : "설명 없음";
@@ -918,6 +1144,9 @@
         els.searchBtn.addEventListener("click", searchYouTube);
         els.saveKeyBtn.addEventListener("click", () => {
             saveSettings();
+            if (els.apiKeyDetails) {
+                els.apiKeyDetails.open = false;
+            }
             alert("API 키와 설정을 저장했습니다.");
         });
         els.clearKeyBtn.addEventListener("click", () => {
@@ -925,15 +1154,19 @@
             els.apiKey.value = "";
             els.searchMode.value = "shorts";
             els.topicPreset.value = "custom";
+            els.mediaTypeFilter.value = "all";
             els.query.value = "";
             els.channelId.value = "";
             els.order.value = "viewCount";
             els.regionCode.value = "KR";
             els.language.value = "ko";
             els.minViews.value = "1000000";
+            els.minViewsPreset.value = "1000000";
             els.maxSeconds.value = "60";
+            els.durationPreset.value = "60";
             els.daysBack.value = "30";
             els.pageCount.value = "2";
+            els.resultSort.value = "viewCount_desc";
             refreshModeUi();
             alert("저장된 API 키와 설정을 지웠습니다.");
         });
@@ -943,14 +1176,22 @@
             if (els.searchMode.value === "shorts") {
                 els.order.value = "viewCount";
                 els.maxSeconds.value = "60";
+                els.durationPreset.value = "60";
                 els.daysBack.value = "30";
             } else if (els.searchMode.value === "today_hot") {
                 els.order.value = "viewCount";
                 els.maxSeconds.value = "7200";
+                els.durationPreset.value = "7200";
                 els.daysBack.value = "1";
+            } else if (els.searchMode.value === "trending_now") {
+                els.order.value = "viewCount";
+                els.maxSeconds.value = "7200";
+                els.durationPreset.value = "7200";
+                els.daysBack.value = "0";
             } else {
                 els.order.value = "viewCount";
                 els.maxSeconds.value = "7200";
+                els.durationPreset.value = "7200";
                 els.daysBack.value = "7";
             }
             refreshModeUi();
@@ -960,16 +1201,36 @@
             refreshModeUi();
             saveSettings();
         });
+        els.minViewsPreset.addEventListener("change", () => {
+            applyMinViewsPreset();
+            saveSettings();
+        });
+        els.durationPreset.addEventListener("change", () => {
+            applyDurationPreset();
+            saveSettings();
+        });
+        els.resultSort.addEventListener("change", () => {
+            if (lastResults.length) {
+                renderResults(sortResults(lastResults));
+            }
+            saveSettings();
+        });
 
         [
             els.apiKey, els.query, els.channelId, els.order, els.regionCode,
-            els.language, els.minViews, els.maxSeconds, els.daysBack, els.pageCount
+            els.language, els.minViews, els.maxSeconds, els.daysBack, els.pageCount,
+            els.mediaTypeFilter
         ].forEach((element) => {
             element.addEventListener("change", saveSettings);
         });
 
         loadSettings();
+        applyMinViewsPreset();
+        applyDurationPreset();
         refreshModeUi();
+        if (els.apiKeyDetails) {
+            els.apiKeyDetails.open = false;
+        }
     </script>
 </body>
 </html>
