@@ -240,7 +240,7 @@
         <button class="tab-btn" onclick="switchTab('promptTab', this)">📝 2. 프롬프트 자동 생성기</button>
         <button class="tab-btn" onclick="switchTab('subtitleTab', this)">🎬 3. Scene 8 (자막 분할)</button>
         <button class="tab-btn" onclick="switchTab('speechTab', this)">⏱️ 4. 발표 시간 계산기</button>
-        <button class="tab-btn" onclick="switchTab('imagePromptExtractTab', this)">🖼️ 5. 이미지 프롬프트 추출기</button>
+        <button class="tab-btn" onclick="switchTab('imagePromptExtractTab', this)">🖼️ 5. 프롬프트 추출기 / 자동 문구 붙이기</button>
     </div>
 
     <div id="renameTab" class="card active">
@@ -435,14 +435,54 @@
     </div>
 
     <div id="imagePromptExtractTab" class="card">
-        <h2>🖼️ 이미지 프롬프트 추출기</h2>
-        <p>전체 이미지 프롬프트 묶음을 넣고 번호를 입력하면, 해당 번호의 프롬프트만 원래 형식 그대로 추출합니다.</p>
+        <h2>🖼️ 프롬프트 추출기 / 자동 문구 붙이기</h2>
+        <p>이미지/비디오 프롬프트를 붙여넣으면 공통 문구를 자동으로 붙여주고, 전체 이미지 프롬프트 묶음에서는 원하는 번호만 골라서 같은 규칙으로 추출할 수 있습니다.</p>
+
+        <div class="helper-box" style="margin-bottom: 18px;">
+            <div class="helper-box-title">💡 작업자님을 위한 팁 (자동화 프로그램 설정용)</div>
+            <div class="mini-note" style="line-height: 1.7; margin-bottom: 10px;">프로그램(코딩 봇)에서 제 답변을 받아서 합치실 때, 아래 문구들을 앞뒤로 붙이게 세팅하시면 됩니다.</div>
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label>이미지 앞에 붙일 것</label>
+                <textarea rows="3" readonly>dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.</textarea>
+            </div>
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label>이미지 뒤에 붙일 것</label>
+                <textarea rows="2" readonly>(ONLY render the explicitly requested Korean 3D text. NO random background text.)</textarea>
+            </div>
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label>비디오 앞에 붙일 것</label>
+                <textarea rows="3" readonly>dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.</textarea>
+            </div>
+            <div class="input-group" style="margin-bottom: 0;">
+                <label>비디오 뒤에 붙일 것</label>
+                <textarea rows="2" readonly>absolutely preserve 3D text sharp. (No character transition, No text transition)</textarea>
+            </div>
+        </div>
+
         <div class="input-group">
-            <label>1. 번호 범위 입력 (예: 1,4,5,9 또는 S001,S004,S005,S009)</label>
+            <label>1. 이미지 프롬프트 붙여넣기 (자동으로 앞/뒤 문구 적용)</label>
+            <textarea id="imagePromptAutoInput" rows="12" placeholder="예:&#10;S061 Prompt : Set in a dark, empty palace corridor... |||&#10;&#10;S062 Prompt : Set in a deeply shadowed crossroads... |||"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="copyImagePromptAutoResult()">📋 이미지 결과 복사하기</button>
+        <textarea id="imagePromptAutoOutput" rows="12" readonly style="margin-top:15px;" placeholder="여기에 이미지 프롬프트 자동 적용 결과가 표시됩니다."></textarea>
+
+        <div class="input-group" style="margin-top: 20px;">
+            <label>2. 비디오 프롬프트 붙여넣기 (자동으로 앞/뒤 문구 적용)</label>
+            <textarea id="videoPromptAutoInput" rows="12" placeholder="예:&#10;S061 Prompt : @S061. Slowly pushing in on the character... |||&#10;&#10;S062 Prompt : @S062. High angle tracking down... |||"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="copyVideoPromptAutoResult()">📋 비디오 결과 복사하기</button>
+        <textarea id="videoPromptAutoOutput" rows="12" readonly style="margin-top:15px;" placeholder="여기에 비디오 프롬프트 자동 적용 결과가 표시됩니다."></textarea>
+
+        <hr style="margin: 28px 0; border: 0; border-top: 1px solid #dde6f2;">
+
+        <h3 style="margin-top: 0;">🔎 이미지 프롬프트 번호별 추출</h3>
+        <p class="mini-note" style="margin-top: 0;">여기서는 전체 이미지 프롬프트 묶음에서 원하는 번호만 추출하며, 추출 결과에도 동일한 이미지 앞/뒤 문구가 자동 반영됩니다.</p>
+        <div class="input-group">
+            <label>3. 번호 범위 입력 (예: 1,4,5,9 또는 S001,S004,S005,S009)</label>
             <textarea id="imageExtractRangeInput" rows="3" placeholder="예: S001,S004,S005,S009"></textarea>
         </div>
         <div class="input-group">
-            <label>2. 전체 이미지 프롬프트 붙여넣기</label>
+            <label>4. 전체 이미지 프롬프트 붙여넣기</label>
             <textarea id="imagePromptSourceInput" rows="12" placeholder="예:&#10;S001 Prompt : ... |||&#10;S011&gt;S012 Prompt : ... |||"></textarea>
         </div>
         <button class="btn btn-success" onclick="extractImagePrompts()">✨ 이미지 프롬프트 추출하기</button>
@@ -463,6 +503,8 @@
             const subtitleMergeMaxEl = document.getElementById('subtitleMergeMaxInput');
             const subtitleSceneMinSecEl = document.getElementById('subtitleSceneMinSecInput');
             const subtitleSceneMaxSecEl = document.getElementById('subtitleSceneMaxSecInput');
+            const imagePromptAutoInputEl = document.getElementById('imagePromptAutoInput');
+            const videoPromptAutoInputEl = document.getElementById('videoPromptAutoInput');
             const imageExtractRangeEl = document.getElementById('imageExtractRangeInput');
             const imagePromptSourceEl = document.getElementById('imagePromptSourceInput');
             
@@ -494,6 +536,14 @@
             const savedSubtitleSceneMaxSec = localStorage.getItem('savedSubtitleSceneMaxSec');
             if (savedSubtitleSceneMaxSec) {
                 subtitleSceneMaxSecEl.value = savedSubtitleSceneMaxSec;
+            }
+            const savedImagePromptAutoInput = localStorage.getItem('savedImagePromptAutoInput');
+            if (savedImagePromptAutoInput) {
+                imagePromptAutoInputEl.value = savedImagePromptAutoInput;
+            }
+            const savedVideoPromptAutoInput = localStorage.getItem('savedVideoPromptAutoInput');
+            if (savedVideoPromptAutoInput) {
+                videoPromptAutoInputEl.value = savedVideoPromptAutoInput;
             }
             const savedImageExtractRange = localStorage.getItem('savedImageExtractRange');
             if (savedImageExtractRange) {
@@ -529,12 +579,22 @@
             subtitleSceneMaxSecEl.addEventListener('input', () => {
                 localStorage.setItem('savedSubtitleSceneMaxSec', subtitleSceneMaxSecEl.value);
             });
+            imagePromptAutoInputEl.addEventListener('input', () => {
+                localStorage.setItem('savedImagePromptAutoInput', imagePromptAutoInputEl.value);
+                updateImagePromptAutoOutput();
+            });
+            videoPromptAutoInputEl.addEventListener('input', () => {
+                localStorage.setItem('savedVideoPromptAutoInput', videoPromptAutoInputEl.value);
+                updateVideoPromptAutoOutput();
+            });
             imageExtractRangeEl.addEventListener('input', () => {
                 localStorage.setItem('savedImageExtractRange', imageExtractRangeEl.value);
             });
             imagePromptSourceEl.addEventListener('input', () => {
                 localStorage.setItem('savedImagePromptSource', imagePromptSourceEl.value);
             });
+            updateImagePromptAutoOutput();
+            updateVideoPromptAutoOutput();
             calculateSpeechTime();
         });
 
@@ -885,6 +945,82 @@
         // ==========================================
         // 2. 프롬프트 로직
         // ==========================================
+        const IMAGE_PROMPT_PREFIX = 'dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.';
+        const IMAGE_PROMPT_SUFFIX = '(ONLY render the explicitly requested Korean 3D text. NO random background text.)';
+        const VIDEO_PROMPT_PREFIX = 'dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.';
+        const VIDEO_PROMPT_SUFFIX = 'absolutely preserve 3D text sharp. (No character transition, No text transition)';
+
+        function escapeRegExp(text) {
+            return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function splitPromptHeaderAndBody(block) {
+            const match = String(block || '').match(/^([\s\S]*?\bPrompt\s*:)([\s\S]*)$/i);
+            if (!match) {
+                return { header: '', body: String(block || '').trim() };
+            }
+            return {
+                header: String(match[1] || '').trim(),
+                body: String(match[2] || '').trim()
+            };
+        }
+
+        function applyPromptAffixes(promptBody, options = {}) {
+            const prefix = String(options.prefix || '').trim();
+            const suffix = String(options.suffix || '').trim();
+            let result = String(promptBody || '').trim();
+
+            if (!result) return '';
+
+            if (prefix) {
+                const prefixPattern = new RegExp(`^${escapeRegExp(prefix)}(?:\\s+|$)`, 'i');
+                if (!prefixPattern.test(result)) {
+                    result = `${prefix} ${result}`.trim();
+                }
+            }
+
+            if (suffix) {
+                const suffixPattern = new RegExp(`${escapeRegExp(suffix)}$`, 'i');
+                if (!suffixPattern.test(result)) {
+                    result = `${result} ${suffix}`.trim();
+                }
+            }
+
+            return result;
+        }
+
+        function formatPromptBlock(block, type = 'image') {
+            const cleanBlock = String(block || '').trim();
+            if (!cleanBlock) return '';
+
+            const { header, body } = splitPromptHeaderAndBody(cleanBlock);
+            const affixOptions = type === 'video'
+                ? { prefix: VIDEO_PROMPT_PREFIX, suffix: VIDEO_PROMPT_SUFFIX }
+                : { prefix: IMAGE_PROMPT_PREFIX, suffix: IMAGE_PROMPT_SUFFIX };
+            const formattedBody = applyPromptAffixes(body || cleanBlock, affixOptions);
+
+            return header ? `${header} ${formattedBody}`.trim() : formattedBody;
+        }
+
+        function formatPromptBlocks(rawText, type = 'image') {
+            return String(rawText || '')
+                .split('|||')
+                .map(block => formatPromptBlock(block, type))
+                .filter(Boolean)
+                .map(block => `${block} |||`)
+                .join('\n\n');
+        }
+
+        function updateImagePromptAutoOutput() {
+            const inputValue = document.getElementById('imagePromptAutoInput').value;
+            document.getElementById('imagePromptAutoOutput').value = formatPromptBlocks(inputValue, 'image');
+        }
+
+        function updateVideoPromptAutoOutput() {
+            const inputValue = document.getElementById('videoPromptAutoInput').value;
+            document.getElementById('videoPromptAutoOutput').value = formatPromptBlocks(inputValue, 'video');
+        }
+
         function parsePromptRangeNumbers(rangeStr) {
             let numbersToProcess = new Set();
             const parts = (rangeStr || '').split(',');
@@ -1055,11 +1191,11 @@
                 if (!match) continue;
                 const startNumber = parseInt(match[1], 10);
                 if (selectedNumbers.has(startNumber)) {
-                    results.push(`${block} |||`);
+                    results.push(formatPromptBlock(block, 'image'));
                 }
             }
 
-            outputEl.value = results.join('\n\n');
+            outputEl.value = results.map(block => `${block} |||`).join('\n\n');
             if (!results.length) {
                 alert("입력한 번호와 일치하는 이미지 프롬프트를 찾지 못했습니다.");
             }
@@ -1074,6 +1210,28 @@
             output.select();
             document.execCommand("copy");
             alert("이미지 프롬프트 추출 결과를 복사했습니다!");
+        }
+
+        function copyImagePromptAutoResult() {
+            const output = document.getElementById('imagePromptAutoOutput');
+            if (!output.value.trim()) {
+                alert("먼저 이미지 프롬프트를 붙여넣어주세요!");
+                return;
+            }
+            output.select();
+            document.execCommand("copy");
+            alert("이미지 프롬프트 자동 적용 결과를 복사했습니다!");
+        }
+
+        function copyVideoPromptAutoResult() {
+            const output = document.getElementById('videoPromptAutoOutput');
+            if (!output.value.trim()) {
+                alert("먼저 비디오 프롬프트를 붙여넣어주세요!");
+                return;
+            }
+            output.select();
+            document.execCommand("copy");
+            alert("비디오 프롬프트 자동 적용 결과를 복사했습니다!");
         }
 
         async function handleOverridesFileUpload(event) {
