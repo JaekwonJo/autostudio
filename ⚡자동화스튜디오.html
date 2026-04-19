@@ -443,19 +443,19 @@
             <div class="mini-note" style="line-height: 1.7; margin-bottom: 10px;">프로그램(코딩 봇)에서 제 답변을 받아서 합치실 때, 아래 문구들을 앞뒤로 붙이게 세팅하시면 됩니다.</div>
             <div class="input-group" style="margin-bottom: 10px;">
                 <label>이미지 앞에 붙일 것</label>
-                <textarea rows="3" readonly>dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.</textarea>
+                <textarea id="imagePromptPrefixInput" rows="3">dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.</textarea>
             </div>
             <div class="input-group" style="margin-bottom: 10px;">
                 <label>이미지 뒤에 붙일 것</label>
-                <textarea rows="2" readonly>(ONLY render the explicitly requested Korean 3D text. NO random background text.)</textarea>
+                <textarea id="imagePromptSuffixInput" rows="2">(ONLY render the explicitly requested Korean 3D text. NO random background text.)</textarea>
             </div>
             <div class="input-group" style="margin-bottom: 10px;">
                 <label>비디오 앞에 붙일 것</label>
-                <textarea rows="3" readonly>dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.</textarea>
+                <textarea id="videoPromptPrefixInput" rows="3">dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.</textarea>
             </div>
             <div class="input-group" style="margin-bottom: 0;">
                 <label>비디오 뒤에 붙일 것</label>
-                <textarea rows="2" readonly>absolutely preserve 3D text sharp. (No character transition, No text transition)</textarea>
+                <textarea id="videoPromptSuffixInput" rows="2">absolutely preserve 3D text sharp. (No character transition, No text transition)</textarea>
             </div>
         </div>
 
@@ -503,6 +503,10 @@
             const subtitleMergeMaxEl = document.getElementById('subtitleMergeMaxInput');
             const subtitleSceneMinSecEl = document.getElementById('subtitleSceneMinSecInput');
             const subtitleSceneMaxSecEl = document.getElementById('subtitleSceneMaxSecInput');
+            const imagePromptPrefixEl = document.getElementById('imagePromptPrefixInput');
+            const imagePromptSuffixEl = document.getElementById('imagePromptSuffixInput');
+            const videoPromptPrefixEl = document.getElementById('videoPromptPrefixInput');
+            const videoPromptSuffixEl = document.getElementById('videoPromptSuffixInput');
             const imagePromptAutoInputEl = document.getElementById('imagePromptAutoInput');
             const videoPromptAutoInputEl = document.getElementById('videoPromptAutoInput');
             const imageExtractRangeEl = document.getElementById('imageExtractRangeInput');
@@ -536,6 +540,22 @@
             const savedSubtitleSceneMaxSec = localStorage.getItem('savedSubtitleSceneMaxSec');
             if (savedSubtitleSceneMaxSec) {
                 subtitleSceneMaxSecEl.value = savedSubtitleSceneMaxSec;
+            }
+            const savedImagePromptPrefix = localStorage.getItem('savedImagePromptPrefix');
+            if (savedImagePromptPrefix !== null) {
+                imagePromptPrefixEl.value = savedImagePromptPrefix;
+            }
+            const savedImagePromptSuffix = localStorage.getItem('savedImagePromptSuffix');
+            if (savedImagePromptSuffix !== null) {
+                imagePromptSuffixEl.value = savedImagePromptSuffix;
+            }
+            const savedVideoPromptPrefix = localStorage.getItem('savedVideoPromptPrefix');
+            if (savedVideoPromptPrefix !== null) {
+                videoPromptPrefixEl.value = savedVideoPromptPrefix;
+            }
+            const savedVideoPromptSuffix = localStorage.getItem('savedVideoPromptSuffix');
+            if (savedVideoPromptSuffix !== null) {
+                videoPromptSuffixEl.value = savedVideoPromptSuffix;
             }
             const savedImagePromptAutoInput = localStorage.getItem('savedImagePromptAutoInput');
             if (savedImagePromptAutoInput) {
@@ -578,6 +598,22 @@
             });
             subtitleSceneMaxSecEl.addEventListener('input', () => {
                 localStorage.setItem('savedSubtitleSceneMaxSec', subtitleSceneMaxSecEl.value);
+            });
+            imagePromptPrefixEl.addEventListener('input', () => {
+                localStorage.setItem('savedImagePromptPrefix', imagePromptPrefixEl.value);
+                updateImagePromptAutoOutput();
+            });
+            imagePromptSuffixEl.addEventListener('input', () => {
+                localStorage.setItem('savedImagePromptSuffix', imagePromptSuffixEl.value);
+                updateImagePromptAutoOutput();
+            });
+            videoPromptPrefixEl.addEventListener('input', () => {
+                localStorage.setItem('savedVideoPromptPrefix', videoPromptPrefixEl.value);
+                updateVideoPromptAutoOutput();
+            });
+            videoPromptSuffixEl.addEventListener('input', () => {
+                localStorage.setItem('savedVideoPromptSuffix', videoPromptSuffixEl.value);
+                updateVideoPromptAutoOutput();
             });
             imagePromptAutoInputEl.addEventListener('input', () => {
                 localStorage.setItem('savedImagePromptAutoInput', imagePromptAutoInputEl.value);
@@ -945,10 +981,23 @@
         // ==========================================
         // 2. 프롬프트 로직
         // ==========================================
-        const IMAGE_PROMPT_PREFIX = 'dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.';
-        const IMAGE_PROMPT_SUFFIX = '(ONLY render the explicitly requested Korean 3D text. NO random background text.)';
-        const VIDEO_PROMPT_PREFIX = 'dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.';
-        const VIDEO_PROMPT_SUFFIX = 'absolutely preserve 3D text sharp. (No character transition, No text transition)';
+        const DEFAULT_IMAGE_PROMPT_PREFIX = 'dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.';
+        const DEFAULT_IMAGE_PROMPT_SUFFIX = '(ONLY render the explicitly requested Korean 3D text. NO random background text.)';
+        const DEFAULT_VIDEO_PROMPT_PREFIX = 'dark graphic novel mood, 2.5D storybook aesthetic, painterly shading, visible textured ink lines, matte surfaces, muted and desaturated colors, flattened depth, reduced specular highlights, subtle brush textures, dark cinematic contrast, highly detailed stylized caricature, high-quality CGI with a hand-painted look, 8k render.';
+        const DEFAULT_VIDEO_PROMPT_SUFFIX = 'absolutely preserve 3D text sharp. (No character transition, No text transition)';
+
+        function getPromptAffixes(type = 'image') {
+            if (type === 'video') {
+                return {
+                    prefix: (document.getElementById('videoPromptPrefixInput')?.value || DEFAULT_VIDEO_PROMPT_PREFIX).trim(),
+                    suffix: (document.getElementById('videoPromptSuffixInput')?.value || DEFAULT_VIDEO_PROMPT_SUFFIX).trim()
+                };
+            }
+            return {
+                prefix: (document.getElementById('imagePromptPrefixInput')?.value || DEFAULT_IMAGE_PROMPT_PREFIX).trim(),
+                suffix: (document.getElementById('imagePromptSuffixInput')?.value || DEFAULT_IMAGE_PROMPT_SUFFIX).trim()
+            };
+        }
 
         function escapeRegExp(text) {
             return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -994,9 +1043,7 @@
             if (!cleanBlock) return '';
 
             const { header, body } = splitPromptHeaderAndBody(cleanBlock);
-            const affixOptions = type === 'video'
-                ? { prefix: VIDEO_PROMPT_PREFIX, suffix: VIDEO_PROMPT_SUFFIX }
-                : { prefix: IMAGE_PROMPT_PREFIX, suffix: IMAGE_PROMPT_SUFFIX };
+            const affixOptions = getPromptAffixes(type);
             const formattedBody = applyPromptAffixes(body || cleanBlock, affixOptions);
 
             return header ? `${header} ${formattedBody}`.trim() : formattedBody;
