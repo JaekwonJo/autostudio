@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ 자동화 스튜디오 (Renamer / Prompt / Scene 8)</title>
+    <title>⚡ 자동화 스튜디오 (Renamer / Prompt / Scene 8 / Frame)</title>
     <style>
         body { 
             font-family: 'Malgun Gothic', sans-serif; 
@@ -263,6 +263,96 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* 7. 동영상 프레임 저장기 */
+        .frame-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 18px;
+            align-items: start;
+        }
+        .frame-panel {
+            background: #f8fafc;
+            border: 1px solid #dde6f2;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .frame-control-row {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        .frame-control-row .input-group {
+            flex: 1;
+            min-width: 120px;
+            margin-bottom: 0;
+        }
+        .frame-input-small {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: 'Malgun Gothic', sans-serif;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .frame-file-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: white;
+            box-sizing: border-box;
+        }
+        .frame-status {
+            min-height: 22px;
+            margin-top: 10px;
+            color: #4f5f75;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .frame-video {
+            display: none;
+            width: 100%;
+            max-height: 360px;
+            background: #111827;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .frame-canvas-wrap {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .frame-canvas-wrap canvas {
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }
+        .frame-empty {
+            color: #d1d5db;
+            font-size: 14px;
+            padding: 24px;
+            text-align: center;
+        }
+        .frame-meta {
+            margin-top: 10px;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+        @media (max-width: 860px) {
+            .frame-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -274,6 +364,7 @@
         <button class="tab-btn" onclick="switchTab('speechTab', this)">⏱️ 4. 발표 시간 계산기</button>
         <button class="tab-btn" onclick="switchTab('imagePromptExtractTab', this)">🖼️ 5. 프롬프트 추출기</button>
         <button class="tab-btn" onclick="switchTab('autoPromptTab', this)">🧩 6. 자동 문구 붙이기</button>
+        <button class="tab-btn" onclick="switchTab('frameExtractTab', this)">🖼️ 7. 동영상 프레임 저장</button>
     </div>
 
     <div id="renameTab" class="card active">
@@ -536,6 +627,57 @@
         <textarea id="videoPromptAutoOutput" rows="12" readonly style="margin-top:15px;" placeholder="여기에 비디오 프롬프트 자동 적용 결과가 표시됩니다."></textarea>
     </div>
 
+    <div id="frameExtractTab" class="card">
+        <h2>🖼️ 동영상 장면 프레임 저장기</h2>
+        <p>폴더에서 동영상 파일을 고르거나 파일을 직접 선택한 뒤, 원하는 분/초 위치의 장면을 PNG 이미지로 저장합니다.</p>
+
+        <div class="frame-grid">
+            <div class="frame-panel">
+                <button class="btn btn-primary" type="button" onclick="selectFrameFolder()">📂 1. 폴더 선택</button>
+
+                <div class="input-group" style="margin-top: 12px;">
+                    <label>2. 동영상 파일 선택</label>
+                    <select id="frameVideoSelect" class="frame-file-select" onchange="loadSelectedFrameVideo()" disabled>
+                        <option value="">먼저 폴더를 선택하세요</option>
+                    </select>
+                    <div class="path-note">mp4, mov, webm, mkv, avi, m4v 파일을 찾습니다. 브라우저가 재생 가능한 코덱이어야 합니다.</div>
+                </div>
+
+                <div class="input-group">
+                    <label>또는 파일 직접 선택</label>
+                    <input type="file" id="frameDirectFileInput" accept="video/*,.mp4,.mov,.webm,.mkv,.avi,.m4v">
+                </div>
+
+                <div class="frame-control-row">
+                    <div class="input-group">
+                        <label>분</label>
+                        <input type="number" id="frameMinuteInput" class="frame-input-small" min="0" step="1" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>초</label>
+                        <input type="number" id="frameSecondInput" class="frame-input-small" min="0" step="0.1" value="0">
+                    </div>
+                </div>
+
+                <div style="margin-top: 14px;">
+                    <button class="btn btn-success" type="button" onclick="captureFrameAtInputTime()">📌 프레임 미리보기</button>
+                    <button class="btn btn-primary" id="saveFrameBtn" type="button" onclick="saveCapturedFrame()" disabled>💾 프레임 저장하기</button>
+                </div>
+
+                <div id="frameStatus" class="frame-status">대기 중...</div>
+            </div>
+
+            <div class="frame-panel">
+                <video id="frameVideo" class="frame-video" controls muted playsinline></video>
+                <div class="frame-canvas-wrap">
+                    <canvas id="frameCanvas"></canvas>
+                    <div id="frameEmpty" class="frame-empty">저장할 장면이 여기에 표시됩니다.</div>
+                </div>
+                <div id="frameMeta" class="frame-meta">선택한 파일 없음</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
         // 초기화 및 로컬 스토리지 (자동 저장) 로직
@@ -551,6 +693,9 @@
             const subtitleSceneMaxSecEl = document.getElementById('subtitleSceneMaxSecInput');
             const imageExtractRangeEl = document.getElementById('imageExtractRangeInput');
             const imagePromptSourceEl = document.getElementById('imagePromptSourceInput');
+            const frameDirectFileEl = document.getElementById('frameDirectFileInput');
+            const frameMinuteEl = document.getElementById('frameMinuteInput');
+            const frameSecondEl = document.getElementById('frameSecondInput');
             
             const savedPrompt = localStorage.getItem('savedDefaultPrompt');
             if (savedPrompt) {
@@ -619,6 +764,9 @@
             imagePromptSourceEl.addEventListener('input', () => {
                 localStorage.setItem('savedImagePromptSource', imagePromptSourceEl.value);
             });
+            frameDirectFileEl.addEventListener('change', handleFrameDirectFileSelect);
+            frameMinuteEl.addEventListener('input', invalidateFrameCapture);
+            frameSecondEl.addEventListener('input', invalidateFrameCapture);
 
             initializeAutoPromptPages();
             bindAutoPromptInputs();
@@ -1615,6 +1763,331 @@
         function copySubtitleResult() {
             const output = document.getElementById('subtitleOutput');
             output.select(); document.execCommand("copy"); alert("복사됨!");
+        }
+
+        // ==========================================
+        // 7. 동영상 프레임 저장기
+        // ==========================================
+        let frameFolderHandle = null;
+        let frameVideoEntries = [];
+        let frameCurrentFile = null;
+        let frameCurrentObjectUrl = '';
+        let frameLastBlob = null;
+        let frameLastSaveName = '';
+
+        function setFrameStatus(message) {
+            document.getElementById('frameStatus').textContent = message;
+        }
+
+        function setFrameMeta(message) {
+            document.getElementById('frameMeta').textContent = message;
+        }
+
+        function isFrameVideoFile(fileName) {
+            return VIDEO_EXTENSIONS.has(getFileExtension(fileName));
+        }
+
+        function formatFrameDuration(seconds) {
+            if (!isFinite(seconds) || seconds < 0) return '알 수 없음';
+            const totalSeconds = Math.floor(seconds);
+            const minutes = Math.floor(totalSeconds / 60);
+            const remainSeconds = totalSeconds % 60;
+            return `${minutes}분 ${String(remainSeconds).padStart(2, '0')}초`;
+        }
+
+        function getFrameTargetSeconds() {
+            const minuteValue = parseFloat(document.getElementById('frameMinuteInput').value);
+            const secondValue = parseFloat(document.getElementById('frameSecondInput').value);
+            const minutes = !isNaN(minuteValue) ? minuteValue : 0;
+            const seconds = !isNaN(secondValue) ? secondValue : 0;
+            const totalSeconds = (minutes * 60) + seconds;
+            if (!isFinite(totalSeconds) || totalSeconds < 0) {
+                throw new Error('분/초를 0 이상 숫자로 입력해주세요.');
+            }
+            return totalSeconds;
+        }
+
+        function sanitizeFrameFileName(fileName) {
+            const cleanName = String(fileName || 'video')
+                .replace(/\.[^.]+$/, '')
+                .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+                .trim();
+            return cleanName || 'video';
+        }
+
+        function formatFrameTimeForName(totalSeconds) {
+            const safeSeconds = Math.max(0, totalSeconds);
+            const minutes = Math.floor(safeSeconds / 60);
+            const seconds = safeSeconds - (minutes * 60);
+            const secondText = seconds.toFixed(1).replace(/\.0$/, '').replace('.', 'p');
+            return `${String(minutes).padStart(2, '0')}m${String(secondText).padStart(2, '0')}s`;
+        }
+
+        function buildFrameSaveName(fileName, targetSeconds) {
+            return `${sanitizeFrameFileName(fileName)}_frame_${formatFrameTimeForName(targetSeconds)}.png`;
+        }
+
+        function populateFrameVideoSelect() {
+            const selectEl = document.getElementById('frameVideoSelect');
+            selectEl.innerHTML = '';
+
+            if (!frameVideoEntries.length) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '동영상 파일이 없습니다';
+                selectEl.appendChild(option);
+                selectEl.disabled = true;
+                return;
+            }
+
+            frameVideoEntries.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = String(index);
+                option.textContent = item.name;
+                selectEl.appendChild(option);
+            });
+            selectEl.disabled = false;
+        }
+
+        async function selectFrameFolder() {
+            if (!window.showDirectoryPicker) {
+                alert("현재 브라우저는 폴더 선택 기능을 지원하지 않습니다. Edge 또는 Chrome으로 이 HTML을 열어주세요.");
+                return;
+            }
+
+            try {
+                frameFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                frameVideoEntries = [];
+
+                for await (const entry of frameFolderHandle.values()) {
+                    if (entry.kind === 'file' && isFrameVideoFile(entry.name)) {
+                        frameVideoEntries.push({ name: entry.name, handle: entry });
+                    }
+                }
+
+                frameVideoEntries.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+                populateFrameVideoSelect();
+
+                if (!frameVideoEntries.length) {
+                    setFrameStatus(`'${frameFolderHandle.name}' 폴더에서 동영상 파일을 찾지 못했습니다.`);
+                    setFrameMeta(`선택 폴더: ${frameFolderHandle.name} | 동영상 0개`);
+                    return;
+                }
+
+                setFrameStatus(`'${frameFolderHandle.name}' 폴더에서 동영상 ${frameVideoEntries.length}개를 찾았습니다.`);
+                setFrameMeta(`선택 폴더: ${frameFolderHandle.name} | 동영상 ${frameVideoEntries.length}개`);
+                document.getElementById('frameVideoSelect').value = '0';
+                await loadSelectedFrameVideo();
+            } catch (error) {
+                console.warn('프레임 저장기 폴더 선택 취소 또는 실패', error);
+                setFrameStatus('폴더 선택이 취소되었습니다.');
+            }
+        }
+
+        async function loadSelectedFrameVideo() {
+            const selectEl = document.getElementById('frameVideoSelect');
+            const selectedIndex = parseInt(selectEl.value, 10);
+            if (isNaN(selectedIndex) || !frameVideoEntries[selectedIndex]) return;
+
+            try {
+                const selectedEntry = frameVideoEntries[selectedIndex];
+                const file = await selectedEntry.handle.getFile();
+                loadFrameVideoFile(file, `선택 폴더: ${frameFolderHandle?.name || '알 수 없음'}`);
+            } catch (error) {
+                console.error(error);
+                alert("동영상 파일을 불러오지 못했습니다.");
+            }
+        }
+
+        function handleFrameDirectFileSelect(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            loadFrameVideoFile(file, '직접 선택한 파일');
+        }
+
+        function resetFramePreview() {
+            frameLastBlob = null;
+            frameLastSaveName = '';
+            document.getElementById('saveFrameBtn').disabled = true;
+            const canvas = document.getElementById('frameCanvas');
+            const emptyEl = document.getElementById('frameEmpty');
+            canvas.style.display = 'none';
+            emptyEl.style.display = 'block';
+        }
+
+        function invalidateFrameCapture() {
+            frameLastBlob = null;
+            frameLastSaveName = '';
+            document.getElementById('saveFrameBtn').disabled = true;
+            if (frameCurrentFile) {
+                setFrameStatus("시간이 변경되었습니다. 다시 프레임 미리보기를 눌러주세요.");
+            }
+        }
+
+        function loadFrameVideoFile(file, sourceLabel = '') {
+            if (frameCurrentObjectUrl) {
+                URL.revokeObjectURL(frameCurrentObjectUrl);
+            }
+
+            frameCurrentFile = file;
+            frameCurrentObjectUrl = URL.createObjectURL(file);
+            resetFramePreview();
+
+            const video = document.getElementById('frameVideo');
+            video.src = frameCurrentObjectUrl;
+            video.style.display = 'block';
+            video.load();
+            setFrameStatus("동영상을 불러오는 중입니다...");
+            setFrameMeta(`${sourceLabel} | 파일: ${file.name}`);
+
+            video.onloadedmetadata = () => {
+                setFrameStatus(`불러오기 완료 | 길이: ${formatFrameDuration(video.duration)} | 해상도: ${video.videoWidth}x${video.videoHeight}`);
+                setFrameMeta(`${sourceLabel} | 파일: ${file.name} | 길이: ${formatFrameDuration(video.duration)} | 해상도: ${video.videoWidth}x${video.videoHeight}`);
+            };
+
+            video.onerror = () => {
+                setFrameStatus("브라우저가 이 동영상을 재생하지 못했습니다. mp4(H.264)나 webm 파일로 다시 시도해보세요.");
+                setFrameMeta(`${sourceLabel} | 파일: ${file.name} | 재생 실패`);
+            };
+        }
+
+        function waitForFrameMetadata(video) {
+            if (video.readyState >= 1) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const cleanup = () => {
+                    video.removeEventListener('loadedmetadata', handleLoaded);
+                    video.removeEventListener('error', handleError);
+                };
+                const handleLoaded = () => {
+                    cleanup();
+                    resolve();
+                };
+                const handleError = () => {
+                    cleanup();
+                    reject(new Error('동영상 정보를 읽지 못했습니다.'));
+                };
+                video.addEventListener('loadedmetadata', handleLoaded);
+                video.addEventListener('error', handleError);
+            });
+        }
+
+        function seekFrameVideo(video, targetSeconds) {
+            return new Promise((resolve, reject) => {
+                const timeoutId = window.setTimeout(() => {
+                    cleanup();
+                    reject(new Error('해당 시간으로 이동하는 데 시간이 너무 오래 걸립니다.'));
+                }, 12000);
+
+                const cleanup = () => {
+                    window.clearTimeout(timeoutId);
+                    video.removeEventListener('seeked', handleSeeked);
+                    video.removeEventListener('error', handleError);
+                };
+                const finish = () => {
+                    cleanup();
+                    if (video.requestVideoFrameCallback) {
+                        video.requestVideoFrameCallback(() => resolve());
+                    } else {
+                        window.setTimeout(resolve, 80);
+                    }
+                };
+                const handleSeeked = () => finish();
+                const handleError = () => {
+                    cleanup();
+                    reject(new Error('프레임 위치로 이동하지 못했습니다.'));
+                };
+
+                video.addEventListener('seeked', handleSeeked);
+                video.addEventListener('error', handleError);
+                video.currentTime = targetSeconds;
+            });
+        }
+
+        function canvasToPngBlob(canvas) {
+            return new Promise((resolve, reject) => {
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('이미지 파일을 만들지 못했습니다.'));
+                    }
+                }, 'image/png');
+            });
+        }
+
+        async function captureFrameAtInputTime() {
+            if (!frameCurrentFile) {
+                alert("먼저 동영상 파일을 선택해주세요.");
+                return;
+            }
+
+            const video = document.getElementById('frameVideo');
+            const canvas = document.getElementById('frameCanvas');
+            const emptyEl = document.getElementById('frameEmpty');
+
+            try {
+                const requestedSeconds = getFrameTargetSeconds();
+                setFrameStatus("지정한 시간으로 이동 중입니다...");
+                await waitForFrameMetadata(video);
+
+                if (!isFinite(video.duration) || video.duration <= 0) {
+                    throw new Error('동영상 길이를 확인하지 못했습니다.');
+                }
+
+                if (requestedSeconds > video.duration) {
+                    throw new Error(`입력한 시간이 동영상 길이(${formatFrameDuration(video.duration)})보다 깁니다.`);
+                }
+
+                const targetSeconds = Math.min(requestedSeconds, Math.max(0, video.duration - 0.04));
+                await seekFrameVideo(video, targetSeconds);
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                frameLastBlob = await canvasToPngBlob(canvas);
+                frameLastSaveName = buildFrameSaveName(frameCurrentFile.name, requestedSeconds);
+                document.getElementById('saveFrameBtn').disabled = false;
+                canvas.style.display = 'block';
+                emptyEl.style.display = 'none';
+                setFrameStatus(`미리보기 완료 | 저장 파일명: ${frameLastSaveName}`);
+                setFrameMeta(`파일: ${frameCurrentFile.name} | 캡처 시간: ${formatFrameDuration(requestedSeconds)} | 이미지: ${canvas.width}x${canvas.height}`);
+            } catch (error) {
+                console.error(error);
+                alert(error.message || "프레임을 추출하지 못했습니다.");
+                setFrameStatus(error.message || "프레임 추출 실패");
+            }
+        }
+
+        async function saveCapturedFrame() {
+            if (!frameLastBlob || !frameLastSaveName) {
+                await captureFrameAtInputTime();
+            }
+            if (!frameLastBlob || !frameLastSaveName) return;
+
+            try {
+                if (frameFolderHandle && frameFolderHandle.getFileHandle) {
+                    const fileHandle = await frameFolderHandle.getFileHandle(frameLastSaveName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(frameLastBlob);
+                    await writable.close();
+                    setFrameStatus(`저장 완료: ${frameFolderHandle.name}\\${frameLastSaveName}`);
+                    alert(`선택한 폴더에 저장했습니다.\n${frameLastSaveName}`);
+                    return;
+                }
+            } catch (error) {
+                console.warn('선택 폴더 저장 실패, 다운로드로 전환합니다.', error);
+            }
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(frameLastBlob);
+            link.download = frameLastSaveName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            setFrameStatus(`다운로드로 저장했습니다: ${frameLastSaveName}`);
         }
 
         async function buildSrtBlocks() {
