@@ -847,12 +847,13 @@
             return "";
         }
 
-        function extractMissingNumberInfoFromFilename(fileName) {
+        function extractMissingNumberInfoFromFilename(fileName, typeFilter = 'all') {
             const text = String(fileName || "").trim();
+            const mode = String(typeFilter || 'all').trim().toLowerCase();
             const patterns = [
                 /(?:^|[^A-Za-z0-9])(@[SV])(\d{1,4})(?=\D|$)/i,
                 /(?:^|[^A-Za-z0-9])([SV])(\d{1,4})(?=\D|$)/i,
-                /_([SV])?(\d{1,4})(?=\D|$)/i
+                /_([SV])(\d{1,4})(?=\D|$)/i
             ];
 
             for (const pattern of patterns) {
@@ -861,6 +862,9 @@
                 const number = parseInt(match[2], 10);
                 if (isNaN(number)) continue;
                 const prefix = String(match[1] || '').toUpperCase();
+                const marker = prefix.replace('@', '');
+                if (mode === 'image' && marker !== 'S') continue;
+                if (mode === 'video' && marker !== 'V') continue;
                 return { number, prefix };
             }
 
@@ -1035,7 +1039,7 @@
                         continue;
                     }
                     matchedFileCount++;
-                    const missingInfo = extractMissingNumberInfoFromFilename(entry.name);
+                    const missingInfo = extractMissingNumberInfoFromFilename(entry.name, typeFilter);
                     if (missingInfo) {
                         existingNumbers.add(missingInfo.number);
                         if (missingInfo.prefix) {
