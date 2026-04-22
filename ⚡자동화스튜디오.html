@@ -391,13 +391,14 @@
                 <input type="text" id="missingRangeInput" placeholder="예: 1-135" style="width: 200px;">
                 <select id="missingTypeFilter" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #fff;">
                     <option value="all">전체</option>
-                    <option value="image">이미지</option>
-                    <option value="video">영상</option>
+                    <option value="image">이미지(@S)</option>
+                    <option value="video">영상(@V)</option>
                 </select>
                 <button class="btn btn-primary" style="margin: 0;" onclick="findMissingNumbers()">찾기</button>
             </div>
+            <div class="mini-note" style="margin-top: 6px;">이미지는 @S001/S001, 영상은 @V001/V001 형식의 번호도 누락 확인에 포함합니다.</div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
-                <input type="text" id="missingOutput" readonly placeholder="누락된 번호가 여기에 표시됩니다. (예: S004,S009)" style="flex: 1; background: #fff;">
+                <input type="text" id="missingOutput" readonly placeholder="누락된 번호가 여기에 표시됩니다. (예: @S004,@S009 또는 @V004,@V009)" style="flex: 1; background: #fff;">
                 <button class="btn btn-success" style="margin: 0;" onclick="copyMissing()">📋 복사</button>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
@@ -846,6 +847,46 @@
             return "";
         }
 
+        function extractMissingNumberInfoFromFilename(fileName) {
+            const text = String(fileName || "").trim();
+            const patterns = [
+                /(?:^|[^A-Za-z0-9])(@[SV])(\d{1,4})(?=\D|$)/i,
+                /(?:^|[^A-Za-z0-9])([SV])(\d{1,4})(?=\D|$)/i,
+                /_([SV])?(\d{1,4})(?=\D|$)/i
+            ];
+
+            for (const pattern of patterns) {
+                const match = text.match(pattern);
+                if (!match) continue;
+                const number = parseInt(match[2], 10);
+                if (isNaN(number)) continue;
+                const prefix = String(match[1] || '').toUpperCase();
+                return { number, prefix };
+            }
+
+            return null;
+        }
+
+        function chooseMissingOutputPrefix(prefixCounts, typeFilter) {
+            const mode = String(typeFilter || 'all').trim().toLowerCase();
+            const preferredOrder = mode === 'video'
+                ? ['@V', 'V', '@S', 'S']
+                : (mode === 'image' ? ['@S', 'S', '@V', 'V'] : ['@S', 'S', '@V', 'V']);
+
+            for (const prefix of preferredOrder) {
+                if ((prefixCounts[prefix] || 0) > 0) return prefix;
+            }
+
+            const sortedPrefixes = Object.entries(prefixCounts)
+                .filter(([, count]) => count > 0)
+                .sort((a, b) => b[1] - a[1]);
+            if (sortedPrefixes.length) return sortedPrefixes[0][0];
+
+            if (mode === 'video') return '@V';
+            if (mode === 'image') return '@S';
+            return 'S';
+        }
+
         async function loadFiles() {
             fileTasks = [];
             atPrefixTasks = [];
@@ -983,7 +1024,7 @@
             const start = parseInt(match[1], 10);
             const end = parseInt(match[2], 10);
             let existingNumbers = new Set();
-            let preferredPrefix = "";
+            let prefixCounts = {};
             const typeFilter = document.getElementById('missingTypeFilter').value;
             let matchedFileCount = 0;
 
@@ -994,19 +1035,17 @@
                         continue;
                     }
                     matchedFileCount++;
-                    if (!preferredPrefix) {
-                        preferredPrefix = detectPreferredSceneTagPrefix(entry.name);
-                    }
-                    const sceneNumber = extractSceneNumberFromFilename(entry.name);
-                    if (sceneNumber !== null) {
-                        existingNumbers.add(sceneNumber);
+                    const missingInfo = extractMissingNumberInfoFromFilename(entry.name);
+                    if (missingInfo) {
+                        existingNumbers.add(missingInfo.number);
+                        if (missingInfo.prefix) {
+                            prefixCounts[missingInfo.prefix] = (prefixCounts[missingInfo.prefix] || 0) + 1;
+                        }
                     }
                 }
             }
 
-            if (!preferredPrefix) {
-                preferredPrefix = "S";
-            }
+            const preferredPrefix = chooseMissingOutputPrefix(prefixCounts, typeFilter);
 
             let missing = [];
             for (let i = start; i <= end; i++) {
